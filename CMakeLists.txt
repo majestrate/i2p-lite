@@ -2,10 +2,11 @@ cmake_minimum_required( VERSION 2.8.12 )
 
 cmake_policy( VERSION 2.8.12 )
 
+set(EXE i2p)
 
 file(GLOB I2PD_SRC "src/*.c")
 
-add_executable(i2pd ${I2PD_SRC})
+add_executable(${EXE} ${I2PD_SRC})
 
 find_package(PkgConfig)
 include(FindPackageHandleStandardArgs)
@@ -19,7 +20,7 @@ include_directories(${UV_INCLUDEDIR})
 include_directories(${OPENSSL_INCLUDEDIR})
 include_directories(${ZLIB_INCLUDEDIR})
 include_directories(include)
-target_link_libraries(i2pd ${UV_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} -ljemalloc)
+target_link_libraries(${EXE} ${UV_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} -ljemalloc)
 
 set(PATH_SEP "/")
 

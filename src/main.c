@@ -54,12 +54,9 @@ int main(int argc, char * argv[])
 {
 
   int opt;
-  char * configfile;
+  char * configfile = NULL;
   int loglevel = L_INFO;
   
-  char * home = getenv("HOME");
-  if(home)
-    configfile = path_join(home, ".i2p.conf", 0);
   
   while((opt = getopt(argc, argv, "vhf:")) != -1) {
     switch(opt) {
@@ -72,9 +69,19 @@ int main(int argc, char * argv[])
     case 'v':
       loglevel = L_DEBUG;
       break;
+    default:
+      printhelp(argv[0]);
+      return 1;
     }
   }
-  
+  if (optind >= argc && !configfile && argc > 1) {
+    return -1;
+  }
+  if(!configfile) {
+    char * home = getenv("HOME");
+    if(home)
+      configfile = path_join(home, ".i2p.conf", 0);
+  }
   
   i2p_log_init();
   
@@ -84,6 +91,7 @@ int main(int argc, char * argv[])
 
   // generate config file if it's not there
   if (!file_exists(configfile)) {
+    i2p_info(LOG_MAIN, "generate new config file %s", configfile);
     if(!i2p_config_gen(configfile)) {
       i2p_error(LOG_MAIN, "failed to write to %s: %s", configfile, strerror(errno));
       return -1;
@@ -99,7 +107,7 @@ int main(int argc, char * argv[])
 
   struct main_config * config = mallocx(sizeof(struct main_config), MALLOCX_ZERO);
   i2p_config_for_each(cfg, iter_config_main, config);
-  i2p_info(LOG_MAIN, "i2pd-uv %s starting up", I2PD_VERSION);
+  i2p_info(LOG_MAIN, "%s %s starting up", I2PD_NAME, I2PD_VERSION);
 
   
   if(!i2p_crypto_init(config->crypto)) {
