@@ -27,3 +27,13 @@ char * path_join(const char * base, ...) {
   va_end(args);
   return strdup(path);
 }
+
+// check if a file exists 
+int check_file(char * path)
+{
+  FILE * f = fopen(path, "r");
+  if(!f) return 0;
+  fclose(f);
+  return 1;
+}
+

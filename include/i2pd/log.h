@@ -27,9 +27,14 @@
 #define LOG_MAIN (1 << 5)
 // log config
 #define LOG_CONFIG (1 << 6)
+// log router context
+#define LOG_ROUTER (1 << 7)
+// log netdb io
+#define LOG_NETDB (1 << 8)
+
 
 // log all subsystems
-#define LOG_ALL (LOG_NET | LOG_CRYPTO | LOG_I2NP | LOG_NTCP | LOG_SSU | LOG_MAIN | LOG_CONFIG )
+#define LOG_ALL (LOG_NET | LOG_CRYPTO | LOG_I2NP | LOG_NTCP | LOG_SSU | LOG_MAIN | LOG_CONFIG | LOG_ROUTER | LOG_NETDB)
 
 /** initiailze logging */
 void i2p_log_init();

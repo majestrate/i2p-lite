@@ -40,15 +40,6 @@ static void printhelp(const char * argv0)
   printf("usage: %s [-h | -f i2p.conf]\n", argv0);
 }
 
-// check if a file exists 
-static int file_exists(char * path)
-{
-  FILE * f = fopen(path, "r");
-  if(!f) return 0;
-  fclose(f);
-  return 1;
-}
-
 
 int main(int argc, char * argv[])
 {
@@ -56,7 +47,8 @@ int main(int argc, char * argv[])
   int opt;
   char * configfile = NULL;
   int loglevel = L_INFO;
-  
+
+  struct router_context * router = NULL;
   
   while((opt = getopt(argc, argv, "vhf:")) != -1) {
     switch(opt) {
@@ -91,7 +83,7 @@ int main(int argc, char * argv[])
   i2p_log_set_scope(LOG_ALL);
 
   // generate config file if it's not there
-  if (!file_exists(configfile)) {
+  if (!check_file(configfile)) {
     i2p_info(LOG_MAIN, "generate new config file %s", configfile);
     if(!i2p_config_gen(configfile)) {
       i2p_error(LOG_MAIN, "failed to write to %s: %s", configfile, strerror(errno));
@@ -117,8 +109,26 @@ int main(int argc, char * argv[])
   }
   // turn off crypto logging now that we enter setup
   i2p_log_set_scope(LOG_ALL | (~LOG_CRYPTO));
-  
-  i2p_crypto_done();
+
+  i2p_info(LOG_MAIN, "i2p router context initialize");
+  // init router context
+  router_context_new(&router, config->router);
   free(config);
+  
+  if(router_context_load(router))
+  {
+    i2p_info(LOG_MAIN, "i2p router context loaded up");
+    uv_loop_t * loop = uv_default_loop();
+    router_context_run(router, loop);
+    uv_run(loop, UV_RUN_DEFAULT);
+  }
+
+
+
+  // free router context
+  router_context_free(&router);
+
+  // we done
+  i2p_crypto_done();
   return 0;
 }

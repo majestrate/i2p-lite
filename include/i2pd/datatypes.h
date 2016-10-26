@@ -1,5 +1,6 @@
 #ifndef I2PD_DATATYPES_H_
 #define I2PD_DATATYPES_H_
+#include <stdint.h>
 
 /** identity hash, sha256 */
 #define IDENT_HASH_SIZE 32

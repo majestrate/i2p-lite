@@ -1,5 +1,6 @@
 #ifndef I2PD_NTCP_H_
 #define I2PD_NTCP_H_
+#include <i2pd/transport.h>
 #include <i2pd/types.h>
 
 struct ntcp_config
@@ -31,14 +32,19 @@ void ntcp_server_reconfigure(struct ntcp_server * s, struct ntcp_config c);
 /** @brief return 1 if current running otherwise return 0 */
 int ntcp_server_is_running(struct ntcp_server * s);
 
-/** @brief attach ntcp server to a router context */
-void ntcp_server_attach(struct ntcp_server * s, struct router_context * c);
+/** @brief attach ntcp server to an i2np transport layer */
+void ntcp_server_attach(struct ntcp_server * s, struct i2np_transport * t);
 
-/** @brief detach ntcp server from attached router context */
+/** @brief detach ntcp server from previously attached transport layer */
 void ntcp_server_detach(struct ntcp_server * s);
 
-/** @brief close sockets and deallocate */
+/** @brief close server socket */
+void ntcp_server_close(struct ntcp_server * s);
+
+/** @brief deallocate */
 void ntcp_server_free(struct ntcp_server ** s);
 
+/** @brief get i2np transport implementation for this ntcp server */
+struct i2np_transport_impl * ntcp_server_i2np_impl(struct ntcp_server * s);
 
 #endif
