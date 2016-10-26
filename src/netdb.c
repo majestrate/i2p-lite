@@ -6,66 +6,36 @@
 #include <i2pd/ri.h>
 
 #include <assert.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct netdb_tree
+// compare netdb trees
+int compare_netdb_entries(netdb_entry * left, netdb_entry * right)
 {
-  netdb_entry entry;
-  struct netdb_tree ** left;
-  struct netdb_tree ** right;
-};
-
-// compare netdb entries
-int compare_netdb_entry(struct netdb_tree * left, struct netdb_tree * right)
-{
-  if(!left) return -1;
-  if(!right) return 1;
-  return memcmp(left->entry.ident, right->entry.ident, sizeof(ident_hash));
-}
-
-
-/** @brief heapify a netdb tree */
-void netdb_tree_heapify(struct netdb_tree ** root)
-{
-  
-}
-
-void netdb_tree_init(struct netdb_tree ** tree)
-{
-  (*tree) = mallocx(sizeof(struct netdb_tree *), MALLOCX_ZERO);
-}
-
-void netdb_tree_free(struct netdb_tree ** tree)
-{
-  if((*tree)->left) netdb_tree_free((*tree)->left);
-  if((*tree)->right) netdb_tree_free((*tree)->right);
-  free(*tree);
-  *tree = NULL;
-}
-
-   
-
-/** @brief recursively insert an entry into the netdb tree blindly, does not rebalance */
-void netdb_tree_insert(struct netdb_tree * root, netdb_entry * entry)
-{
-  if(!root) {
-    // empty tree
-    root = mallocx(sizeof(struct netdb_tree), MALLOCX_ZERO);
-    memcpy(&root->entry, entry, sizeof(netdb_entry));
-  } else {
-    if (rand() % 2)
-      netdb_tree_insert(*root->left, entry);
-    else
-      netdb_tree_insert(*root->right, entry);
-  }
+  return memcmp(left->ident, right->ident, sizeof(ident_hash));
 }
 
 struct i2p_netdb
 {
-  struct netdb_tree ** entries;
+  netdb_entry * data;
+  size_t sz;
+  size_t cap;
   i2p_filename rootdir;
 };
+
+void i2p_netdb_ensure_capacity(struct i2p_netdb * db)
+{
+  if(!db->data) {
+    // initial state, emtpy
+    db->data = mallocx(sizeof(netdb_entry) * db->cap, MALLOCX_ZERO);
+  } else if(db->sz == db->cap) {
+    // full
+    size_t newsize = db->cap * 2;
+    db->data = realloc(db->data, newsize * sizeof(netdb_entry));
+    db->sz = newsize;
+  }
+}
 
 /** @brief context for writing a netdb entry */
 struct netdb_write_ctx
@@ -128,22 +98,27 @@ struct netdb_read_ctx
 
 void netdb_read_file(char * filename, void * c)
 {
-  netdb_entry entry;
   struct netdb_read_ctx * ctx = (struct netdb_read_ctx*) c;
   char * fpath = path_join(ctx->current_dir, filename, 0);
   FILE * f = fopen(fpath, "rb");
   if(f) {
-    router_info_new(&entry.ri);
-    if(router_info_load(entry.ri, f)) {
+    // obtain pointer to next entry 
+    netdb_entry * e;
+    i2p_netdb_ensure_capacity(ctx->db);
+    e = ctx->db->data + (ctx->db->sz * sizeof(netdb_entry));
+    // intialize entry
+    router_info_new(&e->ri);
+    // load entry
+    if(router_info_load(e->ri, f)) {
       // hash it
-      router_info_calculate_hash(entry.ri, &entry.ident);
-      // insert it
-      netdb_tree_insert(*ctx->db->entries, &entry);
+      router_info_calculate_hash(e->ri, &e->ident);
+      // we added it :-D
+      ctx->db->sz ++;
     } else {
       // bad entry
       ctx->failed ++;
       i2p_warn(LOG_NETDB, "bad netdb entry %s", fpath);
-      router_info_free(&entry.ri);
+      router_info_free(&e->ri);
     }
     fclose(f);
     
@@ -163,8 +138,46 @@ void netdb_load_skiplist_subdir(char * dir, void * c)
   ctx->current_dir = subdir;
   iterate_all_files(subdir, netdb_read_file, c);
   free(subdir);
-  // rebalance netdb tree for each skiplist subdir
-  netdb_tree_heapify(ctx->db->entries);
+}
+
+static int netdb_compare(const void * a, const void * b)
+{
+  return compare_netdb_entries((netdb_entry*)a, (netdb_entry*)b);
+}
+
+// sort netdb entries
+void netdb_sort(struct i2p_netdb * db)
+{
+  qsort(db->data, db->sz, sizeof(netdb_entry), netdb_compare);
+}
+
+int i2p_netdb_find_router_info(struct i2p_netdb * db, ident_hash * ident, struct router_info ** ri)
+{
+  netdb_entry k;
+  memcpy(k.ident, *ident, sizeof(ident_hash));
+  
+  netdb_entry * e = (netdb_entry *) bsearch(&k, db->data, db->sz, sizeof(netdb_entry), netdb_compare);
+  if(!e) {
+    // not found in memory, try loading
+    FILE * f = netdb_open_file(db, ident, "rb");
+    if(!f) return 0; // not on disk or memory
+    e = db->data + ( db->sz*sizeof(netdb_entry));
+    router_info_new(&e->ri);
+    if(!router_info_load(e->ri, f)) {
+      // bad entry
+      router_info_free(&e->ri);
+      e = NULL;
+    }
+    // increase size
+    db->sz ++;
+    i2p_netdb_ensure_capacity(db);
+    fclose(f);
+  }
+  if(e) {
+    *ri = e->ri;
+    return 1;
+  }
+  return 0;
 }
 
 int i2p_netdb_load_all(struct i2p_netdb * db)
@@ -176,6 +189,7 @@ int i2p_netdb_load_all(struct i2p_netdb * db)
   c.current_dir = NULL;
   iterate_all_dirs(db->rootdir, netdb_load_skiplist_subdir, db);
   i2p_info(LOG_NETDB, "loaded %lu netdb entries", c.loaded);
+  netdb_sort(db);
   return 1;
 }
 
@@ -184,15 +198,34 @@ void i2p_netdb_new(struct i2p_netdb ** db, struct i2p_netdb_config c)
   // alloc
   (*db) = mallocx(sizeof(struct i2p_netdb), MALLOCX_ZERO);
   memcpy((*db)->rootdir, c.rootdir, sizeof(i2p_filename));
-  // init tree
-  netdb_tree_init((*db)->entries);
+
+  (*db)->cap = 128;
+  i2p_netdb_ensure_capacity(*db);
+}
+
+void netdb_free_entry(netdb_entry * e, void * u)
+{
+  (void) u;
+  if(e->ri) router_info_free(&e->ri);
+  e->ri = NULL;
 }
 
 void i2p_netdb_free(struct i2p_netdb ** db)
 {
-  // free tree
-  netdb_tree_free((*db)->entries);
+  // free all entries
+  i2p_netdb_for_each(*db, netdb_free_entry, NULL);
+  // free data
+  free((*db)->data);
   // free netdb
   free(*db);
   *db = NULL;
+}
+
+void i2p_netdb_for_each(struct i2p_netdb * db, netdb_itr i, void * user)
+{
+  size_t idx = 0;
+  while(idx < db->sz) {
+    i(db->data+(idx * sizeof(netdb_entry)), user);
+    idx ++;
+  }
 }
