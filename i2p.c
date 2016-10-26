@@ -75,7 +75,8 @@ int main(int argc, char * argv[])
     }
   }
   if (optind >= argc && !configfile && argc > 1) {
-    return -1;
+    if(loglevel != L_DEBUG)
+      return -1;
   }
   if(!configfile) {
     char * home = getenv("HOME");

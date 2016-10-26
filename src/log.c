@@ -44,6 +44,7 @@ void __i2p_log(int level, int lineno, const char * f, int scope, const char * fm
   int color;
   va_list args;
   const char * lc;
+  if(!log) return;
   if(!(log->scope & scope)) return;
   if(log->level > level) return;
   switch(level) {
@@ -80,6 +81,7 @@ void __i2p_debug_memory(int line, const char * f, int scope, const uint8_t * beg
 {
   uint8_t * p;
   size_t c = 1;
+  if(!log) return;
   if(log->scope & scope && log->level == L_DEBUG)
   {
     p = (uint8_t*) begin;
