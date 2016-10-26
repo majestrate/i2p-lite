@@ -1,11 +1,15 @@
 #ifndef I2PD_CONFIG_H_
 #define I2PD_CONFIG_H_
-#include <stdint.h>
 
+/** write default config to file */
+int i2p_config_gen(char * filepath);
 
-/** types */
+struct i2p_config;
 
-/** i2p_bind_addr hostname size */
-#define MAX_HOST_SIZE 128
+int i2p_config_load(struct i2p_config ** cfg, const char * filepath);
+void i2p_config_free(struct i2p_config ** cfg);
 
+typedef void(*i2p_config_iter_t)(char *, char *, void *);
+
+void i2p_config_for_each(struct i2p_config * cfg, i2p_config_iter_t iter, void * user);
 #endif

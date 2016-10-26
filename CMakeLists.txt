@@ -19,6 +19,9 @@ include_directories(${UV_INCLUDEDIR})
 include_directories(${OPENSSL_INCLUDEDIR})
 include_directories(${ZLIB_INCLUDEDIR})
 include_directories(include)
+target_link_libraries(i2pd ${UV_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} -ljemalloc)
 
-target_link_libraries(i2pd ${UV_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES})
+set(PATH_SEP "/")
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__PATH_SEP__='\"${PATH_SEP}\"'")

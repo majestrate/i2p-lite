@@ -1,4 +1,6 @@
 #include <i2pd/log.h>
+#include <i2pd/memory.h>
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
@@ -7,14 +9,34 @@ struct log_ctx
 {
   int level;
   int scope;
+  FILE * f;
 };
 
-static struct log_ctx l;
+static struct log_ctx * log;
 
-void i2p_log_init(int level, int scope)
+void i2p_log_init()
 {
-  l.level = level;
-  l.scope = scope;
+  log = mallocx(sizeof(struct log_ctx), MALLOCX_ZERO);
+  log->f = stderr;
+}
+
+void i2p_log_set_level(int level)
+{
+  log->level = level;
+}
+
+void i2p_log_set_scope(int scope)
+{
+  log->scope = scope;
+}
+
+void i2p_log_end()
+{
+  // close file if log file
+  if(log->f != stderr &&  log->f != stdout)
+    fclose(log->f);
+  free(log);
+  log = NULL;
 }
 
 void __i2p_log(int level, int lineno, const char * f, int scope, const char * fmt, ...)
@@ -22,8 +44,8 @@ void __i2p_log(int level, int lineno, const char * f, int scope, const char * fm
   int color;
   va_list args;
   const char * lc;
-  if(!(l.scope & scope)) return;
-  if(l.level > level) return;
+  if(!(log->scope & scope)) return;
+  if(log->level > level) return;
   switch(level) {
   default:
     color = 31;
@@ -46,30 +68,30 @@ void __i2p_log(int level, int lineno, const char * f, int scope, const char * fm
     lc = "ERR";
     break;
   }
-  printf("\033[1;%dm[%s %lu %s:%d]\t", color, lc, time(NULL), f, lineno);
+  fprintf(log->f, "\033[1;%dm[%s %lu %s:%d] ", color, lc, time(NULL), f, lineno);
   va_start(args, fmt);
-  vprintf(fmt, args);
+  vfprintf(log->f, fmt, args);
   va_end(args);
-  printf("\033[0m\n");
+  fprintf(log->f, "\033[0m\n");
 }
 
-// dump memory to stdout
+// dump memory
 void __i2p_debug_memory(int line, const char * f, int scope, const uint8_t * begin, const uint8_t * end)
 {
   uint8_t * p;
   size_t c = 1;
-  if(l.scope & scope && l.level == L_DEBUG)
+  if(log->scope & scope && log->level == L_DEBUG)
   {
     p = (uint8_t*) begin;
-    printf("[MEM %s:%d] %p -> %p\n%p ", f, line, begin, end, p);
+    fprintf(log->f, "[MEM %s:%d] %p -> %p\n%p ", f, line, begin, end, p);
     while(p != end) {
       if( c % 16 == 0)
-        printf(" %.2x\n%p ", *p, p);
+        fprintf(log->f, " %.2x\n%p ", *p, p);
       else
-        printf(" %.2x", *p);
+        fprintf(log->f, " %.2x", *p);
       p++;
       c++;
     }
-    printf("\n");
+    fprintf(log->f, "\n");
   }
 }

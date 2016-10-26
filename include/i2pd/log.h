@@ -2,6 +2,8 @@
 #define I2PD_LOG_H_
 #include <stdint.h>
 
+#define I2P_CONFIG_LOG_LEVEL "i2p.log.level"
+
 // log debug spam
 #define L_DEBUG 1
 // log finer 
@@ -23,10 +25,17 @@
 #define LOG_SSU (1 << 4)
 // log i2p client
 #define LOG_MAIN (1 << 5)
-// log all subsystems
-#define LOG_ALL (LOG_NET | LOG_CRYPTO | LOG_I2NP | LOG_NTCP | LOG_SSU | LOG_MAIN)
+// log config
+#define LOG_CONFIG (1 << 6)
 
-void i2p_log_init(int level, int scope);
+// log all subsystems
+#define LOG_ALL (LOG_NET | LOG_CRYPTO | LOG_I2NP | LOG_NTCP | LOG_SSU | LOG_MAIN | LOG_CONFIG )
+
+/** initiailze logging */
+void i2p_log_init();
+
+void i2p_log_set_level(int level);
+void i2p_log_set_scope(int scope);
 
 /** log function */
 void __i2p_log(int level, int lineno, const char * f, int scope, const char * fmt, ...);

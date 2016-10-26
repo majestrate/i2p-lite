@@ -3,6 +3,7 @@
 #include <i2pd/dsa.h>
 #include <i2pd/elg.h>
 #include <i2pd/log.h>
+#include <i2pd/memory.h>
 #include <openssl/crypto.h>
 #include <openssl/dsa.h>
 #include <openssl/ssl.h>
@@ -150,15 +151,6 @@ static void i2p_rsa_deinit()
   BN_free(cc.rsae);
 }
 
-void i2p_crypto_init()
-{
-  SSL_library_init();
-  i2p_elg_init();
-  i2p_dsa_init();
-  i2p_rsa_init();
-}
-
-
 static int elg_test()
 {
   int ret;
@@ -168,17 +160,17 @@ static int elg_test()
   
   struct elg_Encryption * e;
 
-  i2p_debug(LOG_CRYPTO, "generate elg key");
+  i2p_debug(LOG_CRYPTO, "test generate elg key");
   elg_keygen(&priv, &pub);
 
   elg_block_init(&block, "test", 4);
   
   elg_Encryption_new(&e, &pub);
 
-  i2p_debug(LOG_CRYPTO, "elg encrypt");
+  i2p_debug(LOG_CRYPTO, "test elg encrypt");
   elg_Encrypt(e, &block, 0);
 
-  i2p_debug(LOG_CRYPTO, "elg decrypt");
+  i2p_debug(LOG_CRYPTO, "test elg decrypt");
   ret = elg_Decrypt(&priv, &block, 0);
 
   elg_Encryption_free(&e);
@@ -205,7 +197,7 @@ static int dsa_test()
   struct dsa_Sign * signer;
   struct dsa_Verify * verifier;
   
-  i2p_debug(LOG_CRYPTO, "dsa keygen");
+  i2p_debug(LOG_CRYPTO, "test dsa keygen");
   dsa_keygen(&priv, &pub);
 
   // generate random block
@@ -229,10 +221,28 @@ static int dsa_test()
   return ret;
 }
 
-int i2p_crypto_test()
+int i2p_crypto_init(struct i2p_crypto_config cfg)
 {
-  return elg_test() && dsa_test();
+  int ret = 1;
+  SSL_library_init();
+  i2p_elg_init();
+  i2p_dsa_init();
+  i2p_rsa_init();
+  if (cfg.sanity_check) {
+    i2p_info(LOG_CRYPTO, "doing crypto sanity check");
+    if(!elg_test()) {
+      i2p_error(LOG_CRYPTO, "elg test failure");
+      ret = 0;
+    }
+    if(!dsa_test()) {
+      i2p_error(LOG_CRYPTO, "dsa test failure");
+      ret = 0;
+    }
+  }
+  if(ret) i2p_info(LOG_CRYPTO, "crypto is sane :^D");
+  return ret;
 }
+
 
 void i2p_crypto_done()
 {
@@ -265,7 +275,7 @@ struct elg_Encryption
 void elg_Encryption_new(struct elg_Encryption ** e, elg_key * pub)
 {
   BIGNUM * k, * y;
-  *e = malloc(sizeof(struct elg_Encryption));
+  *e = mallocx(sizeof(struct elg_Encryption), MALLOCX_ZERO);
   (*e)->c = BN_CTX_new();
   k = BN_new();
   y = BN_new();
@@ -394,7 +404,7 @@ struct dsa_Sign
 
 void dsa_Sign_new(struct dsa_Sign ** signer, dsa_privkey * priv)
 {
-  *signer = malloc(sizeof(struct dsa_Sign));
+  *signer = mallocx(sizeof(struct dsa_Sign), MALLOCX_ZERO);
   (*signer)->d = createDSA();
   (*signer)->d->priv_key = BN_bin2bn(*priv, DSA_PRIVKEY_LENGTH, NULL);
 }
@@ -423,7 +433,7 @@ struct dsa_Verify
 
 void dsa_Verify_new(struct dsa_Verify ** v, dsa_pubkey * pub)
 {
-  *v = malloc(sizeof(struct dsa_Sign));
+  *v = mallocx(sizeof(struct dsa_Sign), MALLOCX_ZERO);
   (*v)->d = createDSA();
   (*v)->d->pub_key = BN_bin2bn(*pub, DSA_PUBKEY_LENGTH, NULL);
 }
