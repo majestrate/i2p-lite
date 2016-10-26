@@ -4,9 +4,9 @@
 ## requirements
 
 * libuv 1.8.x
-* openssl
+* openssl or libressl
 * zlib
-* libsodium
+* libsodium 1.x
 * jemalloc
 
 ## building
@@ -16,5 +16,4 @@
     mkdir build
     cd build
     cmake ..
-    
     
