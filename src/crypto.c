@@ -20,8 +20,10 @@ static int DSA_set0_key(DSA *d, BIGNUM *pub_key, BIGNUM *priv_key) { d->pub_key 
 
 static void bn2buf(const BIGNUM * bn, uint8_t * buf, size_t len)
 {
-  assert(BN_num_bytes(bn) <= len);
-  BN_bn2bin(bn, buf);
+  int offset = len - BN_num_bytes(bn);
+  assert(offset >= 0);
+  BN_bn2bin(bn, buf+offset);
+  memset(buf, 0, offset);
 }
 
 
@@ -238,8 +240,8 @@ int i2p_crypto_init(struct i2p_crypto_config cfg)
       i2p_error(LOG_CRYPTO, "dsa test failure");
       ret = 0;
     }
+    if(ret) i2p_info(LOG_CRYPTO, "crypto is sane :^D");
   }
-  if(ret) i2p_info(LOG_CRYPTO, "crypto is sane :^D");
   return ret;
 }
 
@@ -304,8 +306,7 @@ void elg_Encrypt(struct elg_Encryption * e, elg_block * block, int zeropad)
   // create m
   uint8_t m[255] = {0};
   BIGNUM * b = BN_new();
-  uint8_t * d;
-  d = elg_block_data(block);
+  uint8_t * d = elg_block_data(block);
   m[0] = 0xff;
   memcpy(m+33, d, ELG_DATA_SIZE);
   SHA256(m+33, ELG_DATA_SIZE, m+1);
@@ -364,6 +365,7 @@ int elg_Decrypt(elg_key * priv, elg_block * block, int zeropad)
     e = elg_block_data(block);
     memcpy(e, m + 33, ELG_DATA_SIZE);
   }
+  BN_CTX_free(c);
   return ret;
 }
 
