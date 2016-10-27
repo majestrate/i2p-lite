@@ -17,4 +17,6 @@ struct ssu_config
   int mtu6;
 };
 
+#define default_ssu_config { "0.0.0.0", 1234, 1, 1, -1, -1 }
+
 #endif

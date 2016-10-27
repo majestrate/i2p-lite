@@ -15,6 +15,8 @@ struct ntcp_config
   int try_ip6;
 };
 
+#define default_ntcp_config {"0.0.0.0", 1234, 1, 1}
+
 // forward declare
 struct router_context;
 

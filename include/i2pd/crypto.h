@@ -10,6 +10,8 @@ struct i2p_crypto_config
   int sanity_check;
 };
 
+#define default_crypto_config { 1 }
+
 /** @brief initialize crypto subsytem */
 int i2p_crypto_init(struct i2p_crypto_config cfg);
 

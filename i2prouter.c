@@ -28,11 +28,16 @@ struct main_config
 static void iter_config_main(char * k, char * v, void * c)
 {
   struct main_config * config = (struct main_config *) c;
+  size_t vl = strlen(v);
   i2p_debug(LOG_MAIN, "config value: %s=%s", k, v);
   if(!strcmp(k, I2P_CONFIG_CRYPTO_CHECK))
     config->crypto.sanity_check = strcmp(v, "1") == 0;
   if(!strcmp(k, I2P_CONFIG_LOG_LEVEL))
     i2p_log_set_level(atoi(v));
+  if(!strcmp(k, I2P_CONFIG_ROUTER_INFO))
+    memcpy(config->router.router_info, v, vl < sizeof(i2p_filename) ? vl : sizeof(i2p_filename));
+  if(!strcmp(k, I2P_CONFIG_ROUTER_KEYS))
+    memcpy(config->router.router_keys, v, vl < sizeof(i2p_filename) ? vl : sizeof(i2p_filename));
 }
 
 static void printhelp(const char * argv0)
@@ -98,12 +103,16 @@ int main(int argc, char * argv[])
   }
   free(configfile);
 
-  struct main_config * config = mallocx(sizeof(struct main_config), MALLOCX_ZERO);
-  i2p_config_for_each(cfg, iter_config_main, config);
+  struct main_config config = {
+    default_router_context_config,
+    default_crypto_config
+  };
+  
+  i2p_config_for_each(cfg, iter_config_main, &config);
   i2p_info(LOG_MAIN, "%s %s starting up", I2PD_NAME, I2PD_VERSION);
 
   
-  if(!i2p_crypto_init(config->crypto)) {
+  if(!i2p_crypto_init(config.crypto)) {
     i2p_error(LOG_MAIN, "crypto init failed");
     return 1;
   }
@@ -112,8 +121,7 @@ int main(int argc, char * argv[])
 
   i2p_info(LOG_MAIN, "i2p router context initialize");
   // init router context
-  router_context_new(&router, config->router);
-  free(config);
+  router_context_new(&router, config.router);
   
   if(router_context_load(router))
   {
@@ -121,9 +129,9 @@ int main(int argc, char * argv[])
     uv_loop_t * loop = uv_default_loop();
     router_context_run(router, loop);
     uv_run(loop, UV_RUN_DEFAULT);
+    i2p_info(LOG_MAIN, "i2p router shutting down");
   }
-
-
+  
 
   // free router context
   router_context_free(&router);

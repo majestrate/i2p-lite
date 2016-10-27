@@ -7,6 +7,9 @@
 
 #include <uv.h>
 
+#define I2P_CONFIG_ROUTER_INFO "i2p.router.info"
+#define I2P_CONFIG_ROUTER_KEYS "i2p.rotuer.keys"
+
 /** @brief parameters for initializing a router context */
 struct router_context_config
 {
@@ -24,6 +27,8 @@ struct router_context_config
   /** @brief network database config */
   struct i2p_netdb_config netdb;
 };
+
+#define default_router_context_config { "router.info", "router.keys", default_ntcp_config, default_ssu_config, default_netdb_config }
 
 struct router_context;
 

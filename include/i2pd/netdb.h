@@ -14,6 +14,8 @@ struct i2p_netdb_config
   i2p_filename rootdir;
 };
 
+#define default_netdb_config { "netDb" }
+
 // entry in the netdb
 typedef struct
 {

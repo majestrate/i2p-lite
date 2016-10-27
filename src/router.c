@@ -84,3 +84,9 @@ int router_context_load(struct router_context * ctx)
     i2p_error(LOG_ROUTER, "failed to load netdb");
   }
 }
+
+
+void router_context_run(struct router_context * ctx, uv_loop_t * loop)
+{
+  
+}
