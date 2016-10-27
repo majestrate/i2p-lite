@@ -30,6 +30,9 @@ int i2p_netdb_find_router_info(struct i2p_netdb * db, ident_hash * ident, struct
 /** @brief flush all entries in ram to disk, returns 1 on success otherwise returns 0 */
 int i2p_netdb_flush_to_disk(struct i2p_netdb * db);
 
+/** @brief ensure filesystem skiplist structure exists return 1 on successs otherwise return 0 */
+int i2p_netdb_ensure_skiplist(struct i2p_netdb * db);
+
 /** @brief load all netdb entries on disk into memory */
 int i2p_netdb_load_all(struct i2p_netdb * db);
 

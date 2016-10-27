@@ -20,7 +20,9 @@ int main(int argc, char * argv[])
   i2p_netdb_new(&db, argv[1]);
 
   int result;
-
+  i2p_debug(LOG_MAIN, "ensure skiplist");
+  result = i2p_netdb_ensure_skiplist(db);
+  i2p_debug(LOG_MAIN, "load all");
   result = i2p_netdb_load_all(db);
   i2p_debug(LOG_MAIN, "i2p_netdb_load_all: %d", result);
   

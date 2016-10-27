@@ -75,7 +75,6 @@ int iterate_all_dirs(char * path, dir_iterator i, void * u)
 
 int iterate_all_with_filter(char * path, dir_iterator i, dir_filter f, void * u)
 {
-  i2p_debug(LOG_UTIL, "open dir %s", path);
   DIR * d = opendir(path);
   if (!d) {
     i2p_error(LOG_UTIL, "failed to open %s", path);
@@ -90,7 +89,6 @@ int iterate_all_with_filter(char * path, dir_iterator i, dir_filter f, void * u)
       if(ent == NULL) break;
       if(strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
         char * fpath = path_join(path, ent->d_name, 0);
-        i2p_debug(LOG_UTIL, "visit %s", fpath);
         if(f(fpath, u)) i(fpath, u);
         free(fpath);
       }
@@ -102,6 +100,5 @@ int iterate_all_with_filter(char * path, dir_iterator i, dir_filter f, void * u)
     i2p_error(LOG_UTIL, "error: %s", strerror(errno));
   
   closedir(d);
-  i2p_debug(LOG_UTIL, "closed %s", path);
   return errno == 0;
 }

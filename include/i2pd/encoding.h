@@ -7,4 +7,6 @@ size_t i2p_base32_encode(uint8_t * in, size_t ilen, char * out, size_t olen);
 
 size_t i2p_base64_encode(uint8_t * in, size_t ilen, char * out, size_t olen);
 
+extern const char * I2P_BASE64_CHARS;
+
 #endif

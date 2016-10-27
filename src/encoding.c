@@ -21,6 +21,7 @@ static const char T64[64] = {
 
 static char P64 = '='; 
 
+const char * I2P_BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-~";
 
 
 size_t                                /* Number of bytes in the encoded buffer */

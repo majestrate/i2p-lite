@@ -6,11 +6,14 @@
 #include <i2pd/ri.h>
 
 #include <assert.h>
+#include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 // compare netdb trees
@@ -229,4 +232,30 @@ void i2p_netdb_for_each(struct i2p_netdb * db, netdb_itr i, void * user)
     i(&e, user);
     idx++;
   }
+}
+
+int i2p_netdb_ensure_skiplist(struct i2p_netdb * db)
+{
+  DIR * d = opendir(db->rootdir);
+  if (d) closedir(d);
+  else {
+    i2p_info(LOG_NETDB, "create netdb base directory %s", db->rootdir);
+    if ( mkdir(db->rootdir, 0700) == -1) return 0;
+  }
+  int ret = 1;
+  char f[3] = { 0 };
+  f[0] = 'r';
+  const char * c = I2P_BASE64_CHARS;
+  while(*c && ret) {
+    f[1] = *c;
+    char * path = path_join(db->rootdir, f, 0);
+    d = opendir(path);
+    if(d) closedir(d);
+    else if (errno == ENOENT) {
+      if ( mkdir(path, 0700) == -1) ret = 0;
+    }
+    c++ ;
+    free(path);
+  }
+  return ret;
 }
