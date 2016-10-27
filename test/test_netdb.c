@@ -10,13 +10,6 @@ int main(int argc, char * argv[])
     return 1;
   }
 
-  size_t min = strlen(argv[1]) + 1;
-  if(min >= sizeof(i2p_filename))
-    min = sizeof(i2p_filename) - 1;
-  
-  struct i2p_netdb_config c;
-  memcpy(c.rootdir, argv[1], min);
-
   i2p_log_init();
   i2p_log_set_level(L_DEBUG);
   i2p_log_set_scope(LOG_ALL);
@@ -24,7 +17,7 @@ int main(int argc, char * argv[])
   i2p_debug(LOG_MAIN, "starting netdb test");
   
   struct i2p_netdb * db;
-  i2p_netdb_new(&db, c);
+  i2p_netdb_new(&db, argv[1]);
 
   int result;
 

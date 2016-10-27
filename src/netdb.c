@@ -24,7 +24,7 @@ struct i2p_netdb
   netdb_entry * data;
   size_t sz;
   size_t cap;
-  i2p_filename rootdir;
+  char * rootdir;
 };
 
 void i2p_netdb_ensure_capacity(struct i2p_netdb * db)
@@ -191,11 +191,11 @@ int i2p_netdb_load_all(struct i2p_netdb * db)
   return 1;
 }
 
-void i2p_netdb_new(struct i2p_netdb ** db, struct i2p_netdb_config c)
+void i2p_netdb_new(struct i2p_netdb ** db, const char * dir)
 {
   // alloc
   (*db) = mallocx(sizeof(struct i2p_netdb), MALLOCX_ZERO);
-  memcpy((*db)->rootdir, c.rootdir, sizeof(i2p_filename));
+  (*db)->rootdir = strdup(dir);
 
   (*db)->cap = 128;
   i2p_netdb_ensure_capacity(*db);
@@ -214,6 +214,8 @@ void i2p_netdb_free(struct i2p_netdb ** db)
   i2p_netdb_for_each(*db, netdb_free_entry, NULL);
   // free data
   free((*db)->data);
+  // free path
+  free((*db)->rootdir);
   // free netdb
   free(*db);
   *db = NULL;

@@ -7,28 +7,22 @@
 
 #include <uv.h>
 
-#define I2P_CONFIG_ROUTER_INFO "i2p.router.info"
-#define I2P_CONFIG_ROUTER_KEYS "i2p.rotuer.keys"
+#define I2P_CONFIG_ROUTER_DIR "i2p.router.dir"
 
 /** @brief parameters for initializing a router context */
 struct router_context_config
 {
-  /** @brief path to router.info */
-  i2p_filename router_info;
-  /** @brief path to router.keys */
-  i2p_filename router_keys;
+  /** @brief root data directory */
+  i2p_filename datadir;
 
   /** @brief config for ntcp */
   struct ntcp_config ntcp;
 
   /** @brief config for ssu */
   struct ssu_config ssu;
-
-  /** @brief network database config */
-  struct i2p_netdb_config netdb;
 };
 
-#define default_router_context_config { "router.info", "router.keys", default_ntcp_config, default_ssu_config, default_netdb_config }
+#define default_router_context_config { {0}, default_ntcp_config, default_ssu_config }
 
 struct router_context;
 

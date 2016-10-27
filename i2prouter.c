@@ -34,10 +34,8 @@ static void iter_config_main(char * k, char * v, void * c)
     config->crypto.sanity_check = strcmp(v, "1") == 0;
   if(!strcmp(k, I2P_CONFIG_LOG_LEVEL))
     i2p_log_set_level(atoi(v));
-  if(!strcmp(k, I2P_CONFIG_ROUTER_INFO))
-    memcpy(config->router.router_info, v, vl < sizeof(i2p_filename) ? vl : sizeof(i2p_filename));
-  if(!strcmp(k, I2P_CONFIG_ROUTER_KEYS))
-    memcpy(config->router.router_keys, v, vl < sizeof(i2p_filename) ? vl : sizeof(i2p_filename));
+  if(!strcmp(k, I2P_CONFIG_ROUTER_DIR))
+    memcpy(config->router.datadir, v, vl < sizeof(i2p_filename) ? vl : sizeof(i2p_filename));
 }
 
 static void printhelp(const char * argv0)
@@ -109,6 +107,24 @@ int main(int argc, char * argv[])
   };
   
   i2p_config_for_each(cfg, iter_config_main, &config);
+
+  if(config.router.datadir[0] == 0) {
+    // set default data dir
+    char * dir = getenv("I2P_ROOT");
+    if(dir) {
+      size_t dlen = strlen(dir);
+      if(dlen < sizeof(i2p_filename))
+        memcpy(config.router.datadir, dir, dlen);
+    } else {
+      char * home = getenv("HOME");
+      dir = path_join(home, ".i2p-lite", 0);
+      size_t dlen = strlen(dir);
+      if(dlen < sizeof(i2p_filename))
+        memcpy(config.router.datadir, dir, dlen);
+      free(dir);
+    }
+  }
+  
   i2p_info(LOG_MAIN, "%s %s starting up", I2PD_NAME, I2PD_VERSION);
 
   

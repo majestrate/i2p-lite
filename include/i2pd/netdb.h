@@ -9,13 +9,6 @@
 
 struct i2p_netdb;
 
-struct i2p_netdb_config
-{
-  i2p_filename rootdir;
-};
-
-#define default_netdb_config { "netDb" }
-
 // entry in the netdb
 typedef struct
 {
@@ -24,7 +17,7 @@ typedef struct
 } netdb_entry;
 
 
-void i2p_netdb_new(struct i2p_netdb ** db, struct i2p_netdb_config c);
+void i2p_netdb_new(struct i2p_netdb ** db, const char * dir);
 
 void i2p_netdb_free(struct i2p_netdb ** db);
 
