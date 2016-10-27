@@ -1,14 +1,19 @@
 #include <i2pd/ri.h>
+#include <i2pd/identity.h>
 #include <i2pd/memory.h>
 #include <i2pd/log.h>
 #include <openssl/sha.h>
 
+#include <sys/stat.h>
+#include <errno.h>
+
+#define MAX_ROUTER_INFO_SIZE 4096
+
 struct router_info
 {
-  uint8_t * data;
+  uint8_t data[MAX_ROUTER_INFO_SIZE];
   size_t len;
-  struct i2p_identity * identity;
-  
+  struct i2p_identity * identity;  
 };
 
 void router_info_new(struct router_info ** ri)
@@ -18,24 +23,32 @@ void router_info_new(struct router_info ** ri)
 
 void router_info_free(struct router_info ** ri)
 {
-  free((*ri)->data);
   free(*ri);
-  *ri = NULL;
 }
 
-int router_info_load(struct router_info * ri, FILE * f)
+int router_info_load(struct router_info * ri, int fd)
 {
   uint8_t * d;
   int ret;
-  fseek(f, 0, SEEK_END);
-  ri->len = ftell(f);
-  rewind(f);
-  ri->data = malloc(ri->len);
-  ret = fread(ri->data, ri->len, 1, f);
+  struct stat st;
+  if(fstat(fd, &st) == -1) {
+    i2p_error(LOG_DATA, "fstat %s", strerror(errno));
+    return 0;
+  }
+  ri->len = st.st_size;
+
+  size_t idx = 0;
+  ssize_t r = 0;
+  do {
+    r = read(fd, ri->data + idx, 128);
+    if (r == -1) break;
+    idx += r;
+  } while(idx < ri->len);
+
+  ret = idx == ri->len;
+  
   if (!ret)  {
     // bad read
-    free(ri->data);
-    ri->data = NULL;
     ri->len = 0;
     i2p_error(LOG_DATA, "failed to load router info, short read");
   }
@@ -58,13 +71,16 @@ int router_info_verify(struct router_info * ri)
   return l > 0 && i2p_identity_verify_data(ri->identity, ri->data, l, ri->data + l);
 }
 
-int router_info_write(struct router_info * ri, FILE * f)
+int router_info_write(struct router_info * ri, int fd)
 {
   if(!ri->len) return 0; // empty
-  return fwrite(ri->data, ri->len, 1, f) != 0;
+  int r = write(fd, ri->data, ri->len);
+  if(r == -1) return 0;
+  if(fsync(fd) == -1) return 0;
+  return r == ri->len;
 }
 
-void router_info_calculate_hash(struct router_info * ri, ident_hash * ident)
+void router_info_hash(struct router_info * ri, ident_hash * ident)
 {
-  SHA256(ri->data, ri->len, *ident);
+  i2p_identity_hash(ri->identity, ident);
 }

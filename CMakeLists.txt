@@ -30,6 +30,10 @@ target_link_libraries(${EXE} i2p ${SODIUM_LIBRARIES} ${UV_LIBRARIES} ${OPENSSL_L
 add_executable(benchmark "test/bench_crypto.c")
 target_link_libraries(benchmark i2p ${SODIUM_LIBRARIES} ${UV_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} -ljemalloc)
 
+add_executable(netdb "test/test_netdb.c")
+target_link_libraries(netdb i2p ${SODIUM_LIBRARIES} ${UV_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} -ljemalloc)
+
+
 set(PATH_SEP "/")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")

@@ -33,9 +33,12 @@
 #define LOG_NETDB (1 << 8)
 // log datatypes parsing
 #define LOG_DATA (1 << 9)
+// log utils
+#define LOG_UTIL (1 << 9)
+
 
 // log all subsystems
-#define LOG_ALL (LOG_NET | LOG_CRYPTO | LOG_I2NP | LOG_NTCP | LOG_SSU | LOG_MAIN | LOG_CONFIG | LOG_ROUTER | LOG_NETDB)
+#define LOG_ALL (LOG_NET | LOG_CRYPTO | LOG_I2NP | LOG_NTCP | LOG_SSU | LOG_MAIN | LOG_CONFIG | LOG_ROUTER | LOG_NETDB | LOG_DATA | LOG_UTIL)
 
 /** initiailze logging */
 void i2p_log_init();
