@@ -6,7 +6,7 @@ set(EXE i2prouter)
 
 file(GLOB LIBI2P_SRC "src/*.c")
 
-add_executable(${EXE} "i2p.c")
+add_executable(${EXE} "i2prouter.c")
 add_library(i2p ${LIBI2P_SRC})
 
 
