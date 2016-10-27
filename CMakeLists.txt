@@ -17,7 +17,7 @@ include(GNUInstallDirs)
 pkg_check_modules(UV libuv)
 pkg_check_modules(OPENSSL openssl)
 pkg_check_modules(ZLIB zlib)
-pkg_check_modules(SODIUM sodium)
+pkg_check_modules(SODIUM libsodium)
 
 include_directories(${UV_INCLUDEDIR})
 include_directories(${OPENSSL_INCLUDEDIR})

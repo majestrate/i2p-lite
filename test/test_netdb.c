@@ -27,6 +27,7 @@ int main(int argc, char * argv[])
   i2p_netdb_new(&db, c);
 
   int result;
+
   result = i2p_netdb_load_all(db);
   i2p_debug(LOG_MAIN, "i2p_netdb_load_all: %d", result);
   

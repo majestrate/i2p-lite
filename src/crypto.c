@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <i2pd/crypto.h>
 #include <i2pd/dsa.h>
+#include <i2pd/eddsa.h>
 #include <i2pd/elg.h>
 #include <i2pd/log.h>
 #include <i2pd/memory.h>
@@ -8,7 +9,7 @@
 #include <openssl/dsa.h>
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
-
+#include <sodium.h>
 
 // take care about openssl version
 #include <openssl/opensslv.h>
@@ -188,7 +189,7 @@ static int dsa_test()
 {
   int ret = 0;
   // data to sign
-  uint8_t block[512] = {0};
+  uint8_t block[1024] = {0};
   // signature
   dsa_signature sig = {0};
 
@@ -203,7 +204,7 @@ static int dsa_test()
   dsa_keygen(&priv, &pub);
 
   // generate random block
-  RAND_bytes(block, sizeof(block));
+  randombytes(block, sizeof(block));
 
   // new signer 
   dsa_Sign_new(&signer, &priv);
@@ -223,6 +224,43 @@ static int dsa_test()
   return ret;
 }
 
+static int ecdsa_test()
+{
+  return 1;
+}
+
+static int eddsa_test()
+{
+  int ret;
+  uint8_t data[1024] = {0};
+  
+  struct eddsa_Sign * s;
+  struct eddsa_Verify * v;
+  
+  eddsa_sig sig = {0};
+
+  eddsa_privkey priv = {0};
+  eddsa_pubkey pub = {0};
+
+  i2p_debug(LOG_CRYPTO, "eddsa keygen");
+  eddsa_keygen(&priv, &pub);
+
+
+  eddsa_Sign_new(&s, &priv);
+  eddsa_Verify_new(&v, &pub);
+  
+  randombytes(data, sizeof(data));
+
+  eddsa_sign_data(s, data, sizeof(data), &sig);
+
+  ret = eddsa_verify_signature(v, data, sizeof(data), &sig);
+  
+  eddsa_Sign_free(&s);
+  eddsa_Verify_free(&v);
+  
+  return ret;
+}
+
 int i2p_crypto_init(struct i2p_crypto_config cfg)
 {
   int ret = 1;
@@ -230,6 +268,7 @@ int i2p_crypto_init(struct i2p_crypto_config cfg)
   i2p_elg_init();
   i2p_dsa_init();
   i2p_rsa_init();
+  assert(sodium_init() != -1);
   if (cfg.sanity_check) {
     i2p_info(LOG_CRYPTO, "doing crypto sanity check");
     if(!elg_test()) {
@@ -238,6 +277,14 @@ int i2p_crypto_init(struct i2p_crypto_config cfg)
     }
     if(!dsa_test()) {
       i2p_error(LOG_CRYPTO, "dsa test failure");
+      ret = 0;
+    }
+    if (!ecdsa_test()) {
+      i2p_error(LOG_CRYPTO, "ecdsa test failure");
+      ret = 0;
+    }
+    if(!eddsa_test()) {
+      i2p_error(LOG_CRYPTO, "eddsa test failure");
       ret = 0;
     }
     if(ret) i2p_info(LOG_CRYPTO, "crypto is sane :^D");

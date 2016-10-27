@@ -1,5 +1,6 @@
 #ifndef I2PD_CRYPTO_H_
 #define I2PD_CRYPTO_H_
+#include <sodium/randombytes.h>
 
 #define I2P_CONFIG_CRYPTO_CHECK "i2p.crypto.check"
 
