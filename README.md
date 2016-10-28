@@ -6,7 +6,6 @@
 * libuv 1.8.x
 * openssl or libressl
 * zlib
-* libsodium 1.x
 * jemalloc
 
 ## building
