@@ -9,7 +9,7 @@
 #include <openssl/dsa.h>
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
-#include <sodium.h>
+
 
 // take care about openssl version
 #include <openssl/opensslv.h>
@@ -95,13 +95,13 @@ struct crypto_consts
 };
 
 
-static struct crypto_consts cc;
+struct crypto_consts * cc = NULL;
 
 // create new dsa context with i2p primes
 DSA * createDSA()
 {
   DSA * dsa = DSA_new();
-  DSA_set0_pqg(dsa, BN_dup(cc.dsap), BN_dup(cc.dsaq), BN_dup(cc.dsag));
+  DSA_set0_pqg(dsa, BN_dup(cc->dsap), BN_dup(cc->dsaq), BN_dup(cc->dsag));
   DSA_set0_key(dsa, NULL, NULL);
   return dsa;
 }
@@ -110,48 +110,48 @@ DSA * createDSA()
 // init i2p elg parameters
 static void i2p_elg_init()
 {
-  cc.elgp = BN_new();
-  BN_bin2bn(elgp_, 256, cc.elgp);
-  cc.elgg = BN_new();
-  BN_set_word(cc.elgg, elgg_);
+  cc->elgp = BN_new();
+  BN_bin2bn(elgp_, 256, cc->elgp);
+  cc->elgg = BN_new();
+  BN_set_word(cc->elgg, elgg_);
 }
 
 // deinit i2p elg parameters
 static void i2p_elg_deinit()
 {
-  BN_free(cc.elgp);
-  BN_free(cc.elgg);
+  BN_free(cc->elgp);
+  BN_free(cc->elgg);
 }
 
 
 // init dsa primes
 static void i2p_dsa_init()
 {
-  cc.dsap = BN_new();
-  cc.dsaq = BN_new();
-  cc.dsag = BN_new();
-  BN_bin2bn(dsap_, 128, cc.dsap);
-  BN_bin2bn(dsaq_, 20, cc.dsaq);
-  BN_bin2bn(dsag_, 128, cc.dsag);
+  cc->dsap = BN_new();
+  cc->dsaq = BN_new();
+  cc->dsag = BN_new();
+  BN_bin2bn(dsap_, 128, cc->dsap);
+  BN_bin2bn(dsaq_, 20, cc->dsaq);
+  BN_bin2bn(dsag_, 128, cc->dsag);
 }
 
 // deinit dsa primes
 static void i2p_dsa_deinit()
 {
-  BN_free(cc.dsap);
-  BN_free(cc.dsag);
-  BN_free(cc.dsaq);
+  BN_free(cc->dsap);
+  BN_free(cc->dsag);
+  BN_free(cc->dsaq);
 }
 
 static void i2p_rsa_init()
 {
-  cc.rsae = BN_new();
-  BN_set_word(cc.rsae, rsae_);
+  cc->rsae = BN_new();
+  BN_set_word(cc->rsae, rsae_);
 }
 
 static void i2p_rsa_deinit()
 {
-  BN_free(cc.rsae);
+  BN_free(cc->rsae);
 }
 
 static int elg_test()
@@ -204,7 +204,7 @@ static int dsa_test()
   dsa_keygen(&priv, &pub);
 
   // generate random block
-  randombytes(block, sizeof(block));
+  RAND_bytes(block, sizeof(block));
 
   // new signer 
   dsa_Sign_new(&signer, &priv);
@@ -249,7 +249,7 @@ static int eddsa_test()
   eddsa_Sign_new(&s, &priv);
   eddsa_Verify_new(&v, &pub);
   
-  randombytes(data, sizeof(data));
+  RAND_bytes(data, sizeof(data));
 
   eddsa_sign_data(s, data, sizeof(data), &sig);
 
@@ -265,10 +265,10 @@ int i2p_crypto_init(struct i2p_crypto_config cfg)
 {
   int ret = 1;
   SSL_library_init();
+  cc = mallocx(sizeof(struct crypto_consts), MALLOCX_ZERO);
   i2p_elg_init();
   i2p_dsa_init();
   i2p_rsa_init();
-  assert(sodium_init() != -1);
   if (cfg.sanity_check) {
     i2p_info(LOG_CRYPTO, "doing crypto sanity check");
     if(!elg_test()) {
@@ -298,6 +298,7 @@ void i2p_crypto_done()
   i2p_elg_deinit();
   i2p_dsa_deinit();
   i2p_rsa_deinit();
+  free(cc);
 }
 
 void elg_keygen(elg_key * priv, elg_key * pub)
@@ -308,7 +309,7 @@ void elg_keygen(elg_key * priv, elg_key * pub)
   p = BN_new();
   BN_rand(p, 2048, -1, 1); // full exponent
   bn2buf(p, (*priv), 256);
-  BN_mod_exp(p, cc.elgg, p, cc.elgp, c);
+  BN_mod_exp(p, cc->elgg, p, cc->elgp, c);
   bn2buf(p, (*pub), 256);
   BN_free(p);
   BN_CTX_free(c);
@@ -332,9 +333,9 @@ void elg_Encryption_new(struct elg_Encryption ** e, elg_key * pub)
   (*e)->b1 = BN_new();
   
   BN_rand(k, 2048, -1, 1); // full exponent
-  BN_mod_exp((*e)->a, cc.elgg, k, cc.elgp, (*e)->c);
+  BN_mod_exp((*e)->a, cc->elgg, k, cc->elgp, (*e)->c);
   BN_bin2bn((*pub), 256, y);
-  BN_mod_exp((*e)->b1, y, k, cc.elgp, (*e)->c);
+  BN_mod_exp((*e)->b1, y, k, cc->elgp, (*e)->c);
   BN_free(k);
   BN_free(y);
 }
@@ -359,7 +360,7 @@ void elg_Encrypt(struct elg_Encryption * e, elg_block * block, int zeropad)
   SHA256(m+33, ELG_DATA_SIZE, m+1);
   // calculate b = b1 * m mod p
   BN_bin2bn(m, 255, b);
-  BN_mod_mul(b, e->b1, b, cc.elgp, e->c);
+  BN_mod_mul(b, e->b1, b, cc->elgp, e->c);
   elg_block_wipe(block);
   if(zeropad) {
     bn2buf(e->a, (*block+1), 256);
@@ -388,15 +389,15 @@ int elg_Decrypt(elg_key * priv, elg_block * block, int zeropad)
   b = BN_new();
 
   BN_bin2bn((*priv), 256, x);
-  BN_sub(x, cc.elgp, x); BN_sub_word(x, 1); // x = elgp - x - 1
+  BN_sub(x, cc->elgp, x); BN_sub_word(x, 1); // x = elgp - x - 1
 
   e = (*block);
   BN_bin2bn (zeropad ? e + 1 : e, 256, a);
   BN_bin2bn (zeropad ? e + 258 : e + 256, 256, b);
 
   // m = b * (a ^ x mod p ) mod p
-  BN_mod_exp(x, a, x, cc.elgp, c);
-  BN_mod_mul(b, b, x, cc.elgp, c);
+  BN_mod_exp(x, a, x, cc->elgp, c);
+  BN_mod_mul(b, b, x, cc->elgp, c);
 
   bn2buf(b, m, 255);
 
@@ -502,7 +503,7 @@ int dsa_verify_signature(struct dsa_Verify * v, const uint8_t * data, const size
   DSA_SIG * s = DSA_SIG_new();
   s->r = BN_bin2bn(*sig, DSA_SIG_LENGTH/2, NULL);
   s->s = BN_bin2bn((*sig + DSA_SIG_LENGTH/2), DSA_SIG_LENGTH/2, NULL);
-  ret = DSA_do_verify(digest, 20, s, v->d);
+  ret = DSA_do_verify(digest, 20, s, v->d) != -1;
   DSA_SIG_free(s);
   return ret;
 }

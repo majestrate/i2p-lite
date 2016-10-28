@@ -3,6 +3,7 @@
 #include <i2pd/eddsa.h>
 #include <i2pd/elg.h>
 #include <i2pd/log.h>
+#include <openssl/rand.h>
 
 static void benchmark_dsa(size_t n)
 {
@@ -72,7 +73,7 @@ static void benchmark_eddsa(size_t n)
   eddsa_Sign_new(&s, &priv);
 
   while(n--) {
-    randombytes(data, sizeof(data));
+    RAND_bytes(data, sizeof(data));
     eddsa_sign_data(s, data, sizeof(data), &sig);
     if (!eddsa_verify_signature(v, data, sizeof(data), &sig))
       fails ++;

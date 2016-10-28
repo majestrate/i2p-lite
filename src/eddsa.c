@@ -1,14 +1,16 @@
 #include <i2pd/eddsa.h>
 #include <i2pd/memory.h>
 #include <assert.h>
-#include <sodium.h>
+#include <openssl/rand.h>
+#include <ed25519_ref10.h>
 
 struct eddsa_Verify {
   eddsa_pubkey k;
 };
 
 struct eddsa_Sign {
-  uint8_t k[64];
+  eddsa_privkey sk;
+  eddsa_pubkey pk;
 };
 
 
@@ -26,9 +28,9 @@ void eddsa_Verify_free(struct eddsa_Verify ** v)
 
 void eddsa_Sign_new(struct eddsa_Sign ** s, eddsa_privkey * priv)
 {
-  eddsa_pubkey k;
   (*s) = mallocx(sizeof(struct eddsa_Sign), MALLOCX_ZERO);
-  crypto_sign_seed_keypair(k, (*s)->k, *priv);
+  memcpy((*s)->sk, *priv, sizeof(eddsa_privkey));
+  ed25519_ref10_pubkey((*s)->pk, *priv);
 }
 
 void eddsa_Sign_free(struct eddsa_Sign ** s)
@@ -39,17 +41,16 @@ void eddsa_Sign_free(struct eddsa_Sign ** s)
 
 void eddsa_keygen(eddsa_privkey * priv, eddsa_pubkey * pub)
 {
-  uint8_t secret[64] = {0};
-  crypto_sign_keypair(*pub, secret);
-  crypto_sign_ed25519_sk_to_seed(*priv, secret);
+  RAND_bytes(*priv, sizeof(eddsa_privkey));
+  ed25519_ref10_pubkey(*pub, *priv);
 }
 
 void eddsa_sign_data(struct eddsa_Sign * s, const uint8_t * data, const size_t len, eddsa_sig * sig)
 {
-  assert(crypto_sign_detached(*sig, NULL, data, len, s->k) != -1);
+  ed25519_ref10_sign(*sig, data, len, s->sk, s->pk);
 }
 
 int eddsa_verify_signature(struct eddsa_Verify * v, const uint8_t * data, const size_t len, eddsa_sig * sig)
 {
-  return crypto_sign_verify_detached(*sig, data, len, v->k) == 0;
+  return ed25519_ref10_open(*sig, data, len, v->k) == 0;
 }

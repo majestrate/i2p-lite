@@ -36,6 +36,8 @@ int router_info_load(struct router_info * ri, int fd)
     return 0;
   }
   ri->len = st.st_size;
+  
+  if(ri->len > sizeof(ri->data)) return 0; // overflow
 
   size_t idx = 0;
   ssize_t r = 0;
