@@ -1,3 +1,4 @@
+#include <i2pd/crypto.h>
 #include <i2pd/log.h>
 #include <i2pd/netdb.h>
 #include <stdio.h>
@@ -14,6 +15,10 @@ int main(int argc, char * argv[])
   i2p_log_set_level(L_DEBUG);
   i2p_log_set_scope(LOG_ALL);
 
+  struct i2p_crypto_config c = default_crypto_config;
+  
+  i2p_crypto_init(c);
+  
   i2p_debug(LOG_MAIN, "starting netdb test");
   
   struct i2p_netdb * db;
