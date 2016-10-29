@@ -22,8 +22,8 @@ pkg_check_modules(ZLIB zlib)
 
 include_directories(${UV_INCLUDEDIR})
 include_directories(${OPENSSL_INCLUDEDIR})
-
 include_directories(${ZLIB_INCLUDEDIR})
+
 include_directories(include)
 include_directories(ref10)
 

@@ -24,4 +24,13 @@ void router_info_hash(struct router_info * ri, ident_hash * ident);
 /** @brief write router info to file */
 int router_info_write(struct router_info * ri, int fd);
 
+struct router_identity;
+
+void router_identity_new(struct router_identity ** i);
+void router_identity_free(struct router_identity ** i);
+
+void router_identity_regenerate(struct router_identity * i, uint16_t sigtype);
+
+void router_identity_write();
+
 #endif

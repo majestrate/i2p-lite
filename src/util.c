@@ -84,8 +84,8 @@ int iterate_all_with_filter(char * path, dir_iterator i, dir_filter f, void * u)
   struct dirent * dent = readdir(d);
   if(dent) {
     struct dirent * ent = NULL;
-    
-    while(!readdir_r(d, dent, &ent)) {
+    int r = 0;
+    while((r = readdir_r(d, dent, &ent)) == 0) {
       if(ent == NULL) break;
       if(strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
         char * fpath = path_join(path, ent->d_name, 0);
@@ -93,11 +93,7 @@ int iterate_all_with_filter(char * path, dir_iterator i, dir_filter f, void * u)
         free(fpath);
       }
     }
-  } else {
-    i2p_error(LOG_UTIL, "failed to read dir %s", path);
   }
-  if(errno)
-    i2p_error(LOG_UTIL, "error: %s", strerror(errno));
   
   closedir(d);
   return errno == 0;

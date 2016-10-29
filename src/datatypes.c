@@ -44,6 +44,7 @@ void i2p_identity_free(struct i2p_identity ** i)
 {
   i2p_cert_free(&(*i)->cert);
   free(*i);
+  *i = NULL;
 }
 
 size_t i2p_identity_size(struct i2p_identity * i)

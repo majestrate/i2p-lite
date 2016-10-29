@@ -10,6 +10,9 @@
 struct router_context
 {
 
+  // mainloop
+  uv_loop_t * loop;
+  
   // base directory for data
   char * data_dir;
   // file for our router info
@@ -18,8 +21,7 @@ struct router_context
   char * router_keys;
 
   // network database storage
-  struct i2p_netdb * netdb;
-  
+  struct i2p_netdb * netdb;  
   // transport layer
   struct i2np_transport * transport;
   // ntcp server
@@ -33,9 +35,11 @@ void router_context_new(struct router_context ** ctx, struct router_context_conf
   (*ctx)->data_dir = strdup(cfg.datadir);
   (*ctx)->router_info = path_join(cfg.datadir, "router.info", 0);
   (*ctx)->router_keys = path_join(cfg.datadir, "router.keys", 0);
+  (*ctx)->loop = cfg.loop;
+  
   
   // init transports
-  i2np_transport_new(&(*ctx)->transport);
+  i2np_transport_new(&(*ctx)->transport, (*ctx)->loop);
 
   // alloc/configure ntcp
   ntcp_server_alloc(&(*ctx)->ntcp);
@@ -90,7 +94,6 @@ int router_context_load(struct router_context * ctx)
   if(!check_file(ctx->router_keys)) {
     // generate router keys
     i2p_info(LOG_ROUTER, "generating new router identity at %s", ctx->router_keys);
-
     
   }
   if(!check_file(ctx->router_info)) {
@@ -106,7 +109,7 @@ int router_context_load(struct router_context * ctx)
 }
 
 
-void router_context_run(struct router_context * ctx, uv_loop_t * loop)
+void router_context_run(struct router_context * ctx)
 {
   
 }

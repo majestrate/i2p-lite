@@ -1,8 +1,8 @@
 #include <i2pd/eddsa.h>
+#include <i2pd/ed25519_ref10.h>
 #include <i2pd/memory.h>
 #include <assert.h>
 #include <openssl/rand.h>
-#include <ed25519_ref10.h>
 
 struct eddsa_Verify {
   eddsa_pubkey k;

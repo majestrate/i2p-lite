@@ -3,6 +3,10 @@
 #include <i2pd/transport.h>
 #include <i2pd/types.h>
 
+#ifndef NTCP_BUFF_SIZE
+#define NTCP_BUFF_SIZE 1024
+#endif
+
 struct ntcp_config
 {
   // address to bind to
@@ -15,7 +19,7 @@ struct ntcp_config
   int try_ip6;
 };
 
-#define default_ntcp_config {"0.0.0.0", 1234, 1, 1}
+#define default_ntcp_config { "0.0.0.0", 1234, 1, 1 }
 
 // forward declare
 struct router_context;
@@ -27,9 +31,6 @@ void ntcp_server_alloc(struct ntcp_server ** s);
 
 /** @brief configure ntcp server with settings */
 void ntcp_server_configure(struct ntcp_server * s, struct ntcp_config c);
-
-/** @brief reconfigure ntcp server while running */
-void ntcp_server_reconfigure(struct ntcp_server * s, struct ntcp_config c);
 
 /** @brief return 1 if current running otherwise return 0 */
 int ntcp_server_is_running(struct ntcp_server * s);

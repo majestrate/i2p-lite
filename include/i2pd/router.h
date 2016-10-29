@@ -12,6 +12,10 @@
 /** @brief parameters for initializing a router context */
 struct router_context_config
 {
+
+  /** @brief event loop to use */
+  uv_loop_t * loop;
+  
   /** @brief root data directory */
   i2p_filename datadir;
 
@@ -22,7 +26,7 @@ struct router_context_config
   struct ssu_config ssu;
 };
 
-#define default_router_context_config { {0}, default_ntcp_config, default_ssu_config }
+#define default_router_context_config { NULL, {0}, default_ntcp_config, default_ssu_config }
 
 struct router_context;
 
@@ -34,8 +38,8 @@ void router_context_free(struct router_context ** ctx);
 /** @brief load i2p router context internal members, return 1 on success otherwise return 0 if any errors happen */
 int router_context_load(struct router_context * ctx);
 
-/** @brief run router context on a mainloop, returns immediately */
-void router_context_run(struct router_context * ctx, uv_loop_t * loop);
+/** @brief run router context on it's mainloop, issues events and returns */
+void router_context_run(struct router_context * ctx);
 
 /** @brief close router context */
 void router_context_close(struct router_context * ctx);

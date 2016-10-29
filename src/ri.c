@@ -23,12 +23,12 @@ void router_info_new(struct router_info ** ri)
 
 void router_info_free(struct router_info ** ri)
 {
+  i2p_identity_free(&(*ri)->identity);
   free(*ri);
 }
 
 int router_info_load(struct router_info * ri, int fd)
 {
-  uint8_t * d;
   int ret;
   struct stat st;
   if(fstat(fd, &st) == -1) {
@@ -54,8 +54,7 @@ int router_info_load(struct router_info * ri, int fd)
     ri->len = 0;
     i2p_error(LOG_DATA, "failed to load router info, short read");
   }
-  d = i2p_identity_read(&ri->identity, ri->data, ri->len);
-  if(d) {
+  if(i2p_identity_read(&ri->identity, ri->data, ri->len)) {
     ret = router_info_verify(ri);
     if(!ret) {
       i2p_error(LOG_DATA, "router info has invalid siganture");
@@ -67,6 +66,7 @@ int router_info_load(struct router_info * ri, int fd)
   }
   return ret;
 }
+
 int router_info_verify(struct router_info * ri)
 {
   int l = ri->len - i2p_identity_siglen(ri->identity);
