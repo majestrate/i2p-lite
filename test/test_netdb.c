@@ -1,5 +1,6 @@
 #include <i2pd/crypto.h>
 #include <i2pd/log.h>
+#include <i2pd/memory.h>
 #include <i2pd/netdb.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,6 +12,13 @@ struct netdb_process_ctx
   size_t invalid;
 };
 
+void print_i2p_addr(struct router_info * ri, struct i2p_addr * addr, void * u)
+{
+  char * ident = router_info_base64_ident(ri);
+  i2p_info(LOG_MAIN, "router info %s has %s address %s port %d ", ident, addr->style, addr->host, addr->port);
+  free(ident);
+}
+
 void process_netdb_entry(netdb_entry * ent, void * u)
 {
   struct netdb_process_ctx * ctx = (struct netdb_process_ctx * ) u;
@@ -21,6 +29,7 @@ void process_netdb_entry(netdb_entry * ent, void * u)
       ctx->hashfail ++;
     } else {
       ctx->valid ++;
+      router_info_iter_addrs(ent->ri, print_i2p_addr, NULL);
     }
   } else {
     ctx->invalid ++;

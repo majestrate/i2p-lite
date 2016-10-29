@@ -1,6 +1,7 @@
 #ifndef I2PD_RI_H_
 #define I2PD_RI_H_
 #include <i2pd/datatypes.h>
+#include <i2pd/address.h>
 
 #include <stdint.h>
 
@@ -23,6 +24,15 @@ void router_info_hash(struct router_info * ri, ident_hash * ident);
 
 /** @brief write router info to file */
 int router_info_write(struct router_info * ri, int fd);
+
+/** @brief get base64 ident hash of this router info, caller must free returned string */
+char * router_info_base64_ident(struct router_info * ri);
+
+/** @brief callback for iterating over all of a router info's addresses */
+typedef void (*router_info_addr_iter)(struct router_info *, struct i2p_addr *, void *);
+
+/** @brief iterate over all this router info's provided addresses */
+void router_info_iter_addrs(struct router_info * ri, router_info_addr_iter i, void * u);
 
 struct router_identity;
 

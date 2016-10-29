@@ -12,7 +12,8 @@
 struct i2p_identity
 {
   elg_key enckey;
-  dsa_pubkey sigkey;
+  dsa_pubkey dsa_key;
+  eddsa_pubkey ed_key;
   struct i2p_cert * cert;
 };
 
@@ -35,9 +36,14 @@ uint8_t * i2p_identity_read(struct i2p_identity ** i, uint8_t * in, size_t len)
   (*i) = mallocx(sizeof(struct i2p_identity), MALLOCX_ZERO);
   memcpy((*i)->enckey, in, sizeof(elg_key));
   in += sizeof(elg_key);
-  memcpy((*i)->sigkey, in, sizeof(dsa_pubkey));
+  memcpy((*i)->dsa_key, in, sizeof(dsa_pubkey));
   in += sizeof(dsa_pubkey);
-  return i2p_cert_read(&(*i)->cert, in, len - (sizeof(elg_key) + sizeof(dsa_pubkey)));
+  in = i2p_cert_read(&(*i)->cert, in, len - (sizeof(elg_key) + sizeof(dsa_pubkey)));
+  uint16_t sigtype = i2p_identity_sigtype(*i);
+  if(sigtype == SIGNING_KEY_TYPE_EDDSA_SHA512_ED25519) {
+    memcpy((*i)->ed_key, (*i)->dsa_key+96, sizeof(eddsa_pubkey));
+  }
+  return in;
 }
 
 void i2p_identity_free(struct i2p_identity ** i)
@@ -55,8 +61,6 @@ size_t i2p_identity_size(struct i2p_identity * i)
 size_t i2p_identity_siglen(struct i2p_identity * i)
 {
   switch(i2p_identity_sigtype(i)) {
-  case SIGNING_KEY_TYPE_DSA_SHA1:
-    return sizeof(dsa_signature);
   case SIGNING_KEY_TYPE_EDDSA_SHA512_ED25519:
     return sizeof(eddsa_sig);
   default:
@@ -74,20 +78,18 @@ int i2p_identity_verify_data(struct i2p_identity * i, uint8_t * data, size_t inl
   int valid = 0;
   uint16_t t = i2p_identity_sigtype(i);
   uint8_t * k = NULL;
-  eddsa_pubkey ed_pub = {0};
   i2p_debug(LOG_DATA, "identity cert is of size %lu", i2p_cert_data(i->cert, &k));
   switch(t) {
   case SIGNING_KEY_TYPE_DSA_SHA1:
-    dsa_Verify_new(&dsa, &i->sigkey);
+    dsa_Verify_new(&dsa, &i->dsa_key);
     memcpy(d_sig, sig, sizeof(d_sig));
     i2p_debug(LOG_DATA, "check DSA signature for identity, size %lu", inlen);
     valid = dsa_verify_signature(dsa, data, inlen, &d_sig);
     dsa_Verify_free(&dsa);
     break;
   case SIGNING_KEY_TYPE_EDDSA_SHA512_ED25519:
-    memcpy(ed_pub, i->sigkey+96, sizeof(eddsa_pubkey));
     memcpy(ed_sig, sig, sizeof(eddsa_sig));
-    eddsa_Verify_new(&eddsa, &ed_pub);
+    eddsa_Verify_new(&eddsa, &i->ed_key);
     i2p_debug(LOG_DATA, "check EdDSA signature for identity, size %lu", inlen);
     valid = eddsa_verify_signature(eddsa, data, inlen, &ed_sig);
     eddsa_Verify_free(&eddsa);
@@ -155,7 +157,7 @@ void i2p_identity_hash(struct i2p_identity * i, ident_hash * h)
   SHA256_CTX c;
   SHA256_Init(&c);
   SHA256_Update(&c, i->enckey, sizeof(elg_key));
-  SHA256_Update(&c, i->sigkey, sizeof(dsa_pubkey));
+  SHA256_Update(&c, i->dsa_key, sizeof(dsa_pubkey));
   SHA256_Update(&c, i->cert->data, i->cert->len);
   SHA256_Final(*h, &c);
 }

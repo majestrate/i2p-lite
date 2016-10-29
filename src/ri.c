@@ -1,8 +1,10 @@
 #include <i2pd/ri.h>
 #include <i2pd/address.h>
+#include <i2pd/encoding.h>
 #include <i2pd/identity.h>
 #include <i2pd/memory.h>
 #include <i2pd/log.h>
+#include <i2pd/util.h>
 #include <openssl/sha.h>
 
 #include <sys/stat.h>
@@ -17,7 +19,7 @@ struct router_info
   uint64_t timestamp;
 
   uint8_t num_addresses;
-  i2p_hostname * addresses;
+  struct i2p_addr ** addresses;
   
 };
 
@@ -29,9 +31,16 @@ void router_info_new(struct router_info ** ri)
 void router_info_free(struct router_info ** ri)
 {
   i2p_identity_free(&(*ri)->identity);
-  free((*ri)->addresses);
+  size_t n = (*ri)->num_addresses;
+  while(n--)
+    i2p_addr_free(&(*ri)->addresses[n]);
   free((*ri)->data);
   free(*ri);
+}
+
+void router_info_process_props(char * k, char * v, void * u)
+{
+  // TODO(psi): implement
 }
 
 int router_info_load(struct router_info * ri, int fd)
@@ -64,24 +73,34 @@ int router_info_load(struct router_info * ri, int fd)
     i2p_error(LOG_DATA, "failed to load router info, short read");
   }
   if(( d = i2p_identity_read(&ri->identity, ri->data, ri->len))) {
-    ret = router_info_verify(ri);
+    if (i2p_identity_sigtype(ri->identity)) 
+      ret = router_info_verify(ri);
+    else // dsa not supported
+      ret = 0;
     if(ret) {
       // parse internal members
-
       // read timestamp
       ri->timestamp = bufbe64toh(d);
       d += sizeof(uint64_t);
       // read addresses
       uint8_t num = *d;
+      i2p_debug(LOG_DATA, "router info has %d addresses", num);
       ri->num_addresses = num;
       d ++;
       if (num) {
-        ri->addresses = mallocx(ri->num_addresses * sizeof(i2p_hostname), MALLOCX_ZERO);
-        while(num--) {
-          
+        ri->addresses = mallocx(ri->num_addresses * sizeof(struct i2p_addr *), MALLOCX_ZERO);
+        uint8_t i = 0;
+        while(i < num && d) {
+          d = i2p_addr_read_dict( &(ri->addresses[i]), d, d - ri->data);
+          i ++;
         }
       }
-      
+      // peers
+      uint8_t numPeers = *d;
+      // TODO(psi): don't skip peers
+      d += numPeers * 32 + 1;
+      // read properties
+      d = read_i2pdict(d, d - ri->data, router_info_process_props, ri);
     } else {
       i2p_error(LOG_DATA, "router info has invalid siganture");
     }
@@ -106,6 +125,23 @@ int router_info_write(struct router_info * ri, int fd)
   if(r == -1) return 0;
   if(fsync(fd) == -1) return 0;
   return r == ri->len;
+}
+
+void router_info_iter_addrs(struct router_info * ri, router_info_addr_iter i, void * u)
+{
+  uint8_t num = ri->num_addresses;
+  uint8_t idx = 0;
+  while(idx < num)
+    i(ri, ri->addresses[idx++], u);
+}
+
+char * router_info_base64_ident(struct router_info * ri)
+{
+  ident_hash h = {0};
+  char s[128] = {0};
+  router_info_hash(ri, &h);
+  i2p_base64_encode(h, sizeof(ident_hash), s, sizeof(s));
+  return strdup(s);
 }
 
 void router_info_hash(struct router_info * ri, ident_hash * ident)
