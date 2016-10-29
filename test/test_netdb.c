@@ -4,6 +4,29 @@
 #include <stdio.h>
 #include <string.h>
 
+struct netdb_process_ctx
+{
+  size_t valid;
+  size_t hashfail;
+  size_t invalid;
+};
+
+void process_netdb_entry(netdb_entry * ent, void * u)
+{
+  struct netdb_process_ctx * ctx = (struct netdb_process_ctx * ) u;
+  ident_hash h;
+  if(router_info_verify(ent->ri)) {
+    router_info_hash(ent->ri, &h);
+    if (memcmp(h, ent->ident, sizeof(ident_hash))) {
+      ctx->hashfail ++;
+    } else {
+      ctx->valid ++;
+    }
+  } else {
+    ctx->invalid ++;
+  }
+}
+
 int main(int argc, char * argv[])
 {
   if(argc != 2) {
@@ -29,7 +52,11 @@ int main(int argc, char * argv[])
   result = i2p_netdb_ensure_skiplist(db);
   i2p_debug(LOG_MAIN, "load all");
   result = i2p_netdb_load_all(db);
-  i2p_debug(LOG_MAIN, "i2p_netdb_load_all: %d", result);
+  struct netdb_process_ctx ctx = {0, 0, 0};
   
+  i2p_netdb_for_each(db, process_netdb_entry, &ctx);
+  i2p_info(LOG_MAIN, "valid %lu", ctx.valid );
+  i2p_info(LOG_MAIN, "invalid %lu", ctx.invalid);
+  i2p_info(LOG_MAIN, "hashfail %lu", ctx.hashfail);
   i2p_netdb_free(&db);
 }

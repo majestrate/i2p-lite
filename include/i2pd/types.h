@@ -5,7 +5,7 @@
 #define MAX_FILENAME_SIZE 256
 typedef char i2p_filename[MAX_FILENAME_SIZE];
 
-#define MAX_HOSTNAME_SIZE 128
+#define MAX_HOSTNAME_SIZE 256
 typedef char i2p_hostname[MAX_HOSTNAME_SIZE];
 
 #endif
