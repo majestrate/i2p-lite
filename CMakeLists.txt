@@ -30,11 +30,11 @@ include_directories(ref10)
 set(LIBS i2p ref10 ${UV_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} -ljemalloc)
 
 target_link_libraries(${EXE} ${LIBS})
-add_executable(benchmark "test/bench_crypto.c")
-target_link_libraries(benchmark ${LIBS})
+add_executable(crypto_benchmark "test/bench_crypto.c")
+target_link_libraries(crypto_benchmark ${LIBS})
 
-add_executable(netdb "test/test_netdb.c")
-target_link_libraries(netdb ${LIBS})
+add_executable(test_netdb "test/test_netdb.c")
+target_link_libraries(test_netdb ${LIBS})
 
 
 set(PATH_SEP "/")
