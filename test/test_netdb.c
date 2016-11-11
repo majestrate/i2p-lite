@@ -12,6 +12,31 @@ struct netdb_process_ctx
   size_t invalid;
 };
 
+struct netdb_find_ctx
+{
+  struct i2p_netdb * db;
+  size_t hit;
+  size_t miss;
+};
+
+void test_find_netdb_entry(netdb_entry * ent, void * u)  
+{
+  struct netdb_find_ctx * ctx = (struct netdb_find_ctx *) u;
+  struct router_info * ri = NULL;
+  ident_hash h;
+  if(i2p_netdb_find_router_info(ctx->db, &ent->ident, &ri)) {
+    // found
+    if(ri) {
+      router_info_hash(ri, &h);
+      if(memcmp(&h, &ent->ident, sizeof(ident_hash)) == 0) {
+        ctx->hit ++;
+        return;
+      }
+    }
+  }
+  ctx->miss ++;
+}
+  
 void print_i2p_addr(struct router_info * ri, struct i2p_addr * addr, void * u)
 {
   char * ident = router_info_base64_ident(ri);
@@ -61,11 +86,17 @@ int main(int argc, char * argv[])
   result = i2p_netdb_ensure_skiplist(db);
   i2p_debug(LOG_MAIN, "load all");
   result = i2p_netdb_load_all(db);
-  struct netdb_process_ctx ctx = {0, 0, 0};
+  struct netdb_process_ctx p_ctx = {0, 0, 0};
   
-  i2p_netdb_for_each(db, process_netdb_entry, &ctx);
-  i2p_info(LOG_MAIN, "valid %lu", ctx.valid );
-  i2p_info(LOG_MAIN, "invalid %lu", ctx.invalid);
-  i2p_info(LOG_MAIN, "hashfail %lu", ctx.hashfail);
+  i2p_netdb_for_each(db, process_netdb_entry, &p_ctx);
+  i2p_info(LOG_MAIN, "valid %lu", p_ctx.valid );
+  i2p_info(LOG_MAIN, "invalid %lu", p_ctx.invalid);
+  i2p_info(LOG_MAIN, "hashfail %lu", p_ctx.hashfail);
+
+  struct netdb_find_ctx f_ctx = {db, 0, 0};
+  
+  i2p_netdb_for_each(db, test_find_netdb_entry, &f_ctx);
+  i2p_info(LOG_MAIN, "lookup hit %lu", f_ctx.hit);
+  i2p_info(LOG_MAIN, "lookup miss %lu", f_ctx.miss);
   i2p_netdb_free(&db);
 }

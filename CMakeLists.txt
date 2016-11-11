@@ -4,14 +4,6 @@ cmake_policy( VERSION 2.8.12 )
 
 set(EXE i2prouter)
 
-file(GLOB LIBI2P_SRC "src/*.c")
-file(GLOB REF10_SRC "ref10/*.c")
-
-add_executable(${EXE} "i2prouter.c")
-add_library(i2p ${LIBI2P_SRC})
-add_library(ref10 ${REF10_SRC})
-
-
 find_package(PkgConfig)
 include(FindPackageHandleStandardArgs)
 include(GNUInstallDirs)
@@ -25,9 +17,18 @@ include_directories(${OPENSSL_INCLUDEDIR})
 include_directories(${ZLIB_INCLUDEDIR})
 
 include_directories(include)
-include_directories(ref10)
+include_directories(contrib/include)
 
-set(LIBS i2p ref10 ${UV_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} -ljemalloc)
+file(GLOB LIBI2P_SRC "i2p/*.c")
+file(GLOB REF10_SRC "contrib/ref10/*.c")
+file(GLOB HASHMAP_SRC "contrib/hashmap/*.c")
+
+add_executable(${EXE} "i2prouter.c")
+add_library(i2p ${LIBI2P_SRC})
+add_library(ref10 ${REF10_SRC})
+add_library(hashmap ${HASHMAP_SRC})
+
+set(LIBS i2p ref10 hashmap ${UV_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} -ljemalloc)
 
 target_link_libraries(${EXE} ${LIBS})
 add_executable(benchmark_crypto "test/bench_crypto.c")

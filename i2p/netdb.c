@@ -4,6 +4,7 @@
 #include <i2pd/encoding.h>
 #include <i2pd/log.h>
 #include <i2pd/ri.h>
+#include <i2pd/netdb_hashmap.h>
 
 #include <assert.h>
 #include <dirent.h>
@@ -16,15 +17,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// compare netdb trees
-int compare_netdb_entries(netdb_entry * left, netdb_entry * right)
-{
-  return memcmp(left->ident, right->ident, sizeof(ident_hash));
-}
-
 struct i2p_netdb
 {
   netdb_entry * data;
+  struct netdb_hashmap * map;
   size_t sz;
   size_t cap;
   char * rootdir;
@@ -118,6 +114,8 @@ void netdb_read_file(char * filename, void * c)
     if(router_info_load(e->ri, fd)) {
       // hash it
       router_info_hash(e->ri, &e->ident);
+      // add it to hashmap
+      netdb_hashmap_insert(ctx->db->map, e->ri);
       // we added it :-D
       ctx->db->sz ++;
       ctx->loaded ++;
@@ -140,44 +138,9 @@ void netdb_load_skiplist_subdir(char * dir, void * c)
   iterate_all_files(dir, netdb_read_file, c);
 }
 
-static int netdb_compare(const void * a, const void * b)
-{
-  return compare_netdb_entries((netdb_entry*)a, (netdb_entry*)b);
-}
-
-// sort netdb entries
-void netdb_sort(struct i2p_netdb * db)
-{
-  qsort(db->data, db->sz, sizeof(netdb_entry), netdb_compare);
-}
-
 int i2p_netdb_find_router_info(struct i2p_netdb * db, ident_hash * ident, struct router_info ** ri)
 {
-  netdb_entry k;
-  memcpy(k.ident, *ident, sizeof(ident_hash));
-  
-  netdb_entry * e = (netdb_entry *) bsearch(&k, db->data, db->sz, sizeof(netdb_entry), netdb_compare);
-  if(!e) {
-    // not found in memory, try loading
-    int fd = netdb_open_file(db, ident, O_RDONLY);
-    if(fd == -1) return 0; // not on disk or memory
-    e = &db->data[db->sz];
-    router_info_new(&e->ri);
-    if(!router_info_load(e->ri, fd)) {
-      // bad entry
-      router_info_free(&e->ri);
-      e = NULL;
-    }
-    // increase size
-    db->sz ++;
-    i2p_netdb_ensure_capacity(db);
-    close(fd);
-  }
-  if(e) {
-    *ri = e->ri;
-    return 1;
-  }
-  return 0;
+  return netdb_hashmap_get(db->map, ident, ri);
 }
 
 int i2p_netdb_load_all(struct i2p_netdb * db)
@@ -190,7 +153,6 @@ int i2p_netdb_load_all(struct i2p_netdb * db)
   i2p_info(LOG_NETDB, "loading netdb from %s", db->rootdir);
   iterate_all_dirs(db->rootdir, netdb_load_skiplist_subdir, &c);
   i2p_info(LOG_NETDB, "loaded %lu netdb entries", c.loaded);
-  netdb_sort(db);
   return 1;
 }
 
@@ -200,8 +162,12 @@ void i2p_netdb_new(struct i2p_netdb ** db, const char * dir)
   (*db) = mallocx(sizeof(struct i2p_netdb), MALLOCX_ZERO);
   (*db)->rootdir = strdup(dir);
 
+  // init storage
   (*db)->cap = 128;
   i2p_netdb_ensure_capacity(*db);
+
+  // init hashmap
+  netdb_hashmap_init(&(*db)->map);
 }
 
 void netdb_free_entry(netdb_entry * e, void * u)
@@ -213,6 +179,8 @@ void netdb_free_entry(netdb_entry * e, void * u)
 
 void i2p_netdb_free(struct i2p_netdb ** db)
 {
+  // free hashmap
+  netdb_hashmap_free(&(*db)->map);
   // free all entries
   i2p_netdb_for_each(*db, netdb_free_entry, NULL);
   // free data
