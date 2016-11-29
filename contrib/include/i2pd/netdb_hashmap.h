@@ -36,6 +36,7 @@
 
 #include <string.h>
 #include <i2pd/datatypes.h>
+#include <i2pd/netdb.h>
 #include <i2pd/ri.h>
 
 struct netdb_hashmap;
@@ -44,15 +45,15 @@ void netdb_hashmap_init(struct netdb_hashmap **map);
 void netdb_hashmap_free(struct netdb_hashmap **map);
 
 /** @brief get router info by ident hash, returns 1 if found otherwise returns 0 */
-int netdb_hashmap_get(struct netdb_hashmap *map, ident_hash * key, struct router_info ** ri);
+int netdb_hashmap_get(struct netdb_hashmap *map, ident_hash key, struct router_info ** ri);
 
 /** @brief insert router info into hashmap, returns 0 if already in hashmap otherwise returns 1 */
 int netdb_hashmap_insert(struct netdb_hashmap *map, struct router_info *ri);
 
 /** @brief remove rotuer info by ident hash, returns 1 if removed otherwise return 0 */
-int netdb_hashmap_remove(struct netdb_hashmap *map, ident_hash *key);
+int netdb_hashmap_remove(struct netdb_hashmap *map, ident_hash key);
 
-typedef void (*netdb_hashmap_iter)(ident_hash * k, struct router_info * r, void *);
-
+/** @brief iterate over every item in hashmap */
+void netdb_hashmap_for_each(struct netdb_hashmap *map, netdb_iterator i, void * u);
 
 #endif

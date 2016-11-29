@@ -81,17 +81,15 @@ int iterate_all_with_filter(char * path, dir_iterator i, dir_filter f, void * u)
     return 0;
   }
 
-  struct dirent * dent = readdir(d);
-  if(dent) {
-    struct dirent * ent = NULL;
-    int r = 0;
-    while((r = readdir_r(d, dent, &ent)) == 0) {
-      if(ent == NULL) break;
-      if(strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
-        char * fpath = path_join(path, ent->d_name, 0);
-        if(f(fpath, u)) i(fpath, u);
-        free(fpath);
-      }
+  struct dirent * ent ;
+
+  int r = 0;
+  while((ent = readdir(d))) {
+    if(ent == NULL) break;
+    if(strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
+      char * fpath = path_join(path, ent->d_name, 0);
+      if(f(fpath, u)) i(fpath, u);
+      free(fpath);
     }
   }
   

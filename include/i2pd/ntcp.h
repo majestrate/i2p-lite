@@ -4,7 +4,7 @@
 #include <i2pd/types.h>
 
 #ifndef NTCP_BUFF_SIZE
-#define NTCP_BUFF_SIZE 1024
+#define NTCP_BUFF_SIZE (1024 * 4)
 #endif
 
 struct ntcp_config

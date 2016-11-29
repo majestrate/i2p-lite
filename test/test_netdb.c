@@ -19,16 +19,17 @@ struct netdb_find_ctx
   size_t miss;
 };
 
-void test_find_netdb_entry(netdb_entry * ent, void * u)  
+void test_find_netdb_entry(ident_hash h, struct router_info * drop, void * u)  
 {
+  (void) drop;
+  ident_hash ih;
   struct netdb_find_ctx * ctx = (struct netdb_find_ctx *) u;
   struct router_info * ri = NULL;
-  ident_hash h;
-  if(i2p_netdb_find_router_info(ctx->db, &ent->ident, &ri)) {
+  if(i2p_netdb_find_router_info(ctx->db, h, &ri)) {
     // found
     if(ri) {
-      router_info_hash(ri, &h);
-      if(memcmp(&h, &ent->ident, sizeof(ident_hash)) == 0) {
+      router_info_hash(ri, &ih);
+      if(memcmp(h, ih, sizeof(ident_hash)) == 0) {
         ctx->hit ++;
         return;
       }
@@ -44,17 +45,17 @@ void print_i2p_addr(struct router_info * ri, struct i2p_addr * addr, void * u)
   free(ident);
 }
 
-void process_netdb_entry(netdb_entry * ent, void * u)
+void process_netdb_entry(ident_hash h, struct router_info * ri, void * u)
 {
+  ident_hash ih;
   struct netdb_process_ctx * ctx = (struct netdb_process_ctx * ) u;
-  ident_hash h;
-  if(router_info_verify(ent->ri)) {
-    router_info_hash(ent->ri, &h);
-    if (memcmp(h, ent->ident, sizeof(ident_hash))) {
+  if(router_info_verify(ri)) {
+    router_info_hash(ri, &ih);
+    if (memcmp(h, ih, sizeof(ident_hash))) {
       ctx->hashfail ++;
     } else {
       ctx->valid ++;
-      router_info_iter_addrs(ent->ri, print_i2p_addr, NULL);
+      router_info_iter_addrs(ri, print_i2p_addr, NULL);
     }
   } else {
     ctx->invalid ++;
@@ -97,6 +98,8 @@ int main(int argc, char * argv[])
   
   i2p_netdb_for_each(db, test_find_netdb_entry, &f_ctx);
   i2p_info(LOG_MAIN, "lookup hit %lu", f_ctx.hit);
-  i2p_info(LOG_MAIN, "lookup miss %lu", f_ctx.miss);
+  if (f_ctx.miss > 0) {
+    i2p_error(LOG_MAIN, "lookup miss %lu", f_ctx.miss);
+  }
   i2p_netdb_free(&db);
 }

@@ -25,7 +25,7 @@ void i2p_netdb_free(struct i2p_netdb ** db);
 int i2p_netdb_put_router_info(struct i2p_netdb * db, struct router_info * ri);
 
 /** @brief find a router info by ident hash, loads it if not loaded returns 1 if found otherwise returns 0 if not found */
-int i2p_netdb_find_router_info(struct i2p_netdb * db, ident_hash * ident, struct router_info ** ri);
+int i2p_netdb_find_router_info(struct i2p_netdb * db, ident_hash ident, struct router_info ** ri);
 
 /** @brief flush all entries in ram to disk, returns 1 on success otherwise returns 0 */
 int i2p_netdb_flush_to_disk(struct i2p_netdb * db);
@@ -37,9 +37,9 @@ int i2p_netdb_ensure_skiplist(struct i2p_netdb * db);
 int i2p_netdb_load_all(struct i2p_netdb * db);
 
 /** @brief netdb iterator type */
-typedef void(*netdb_itr)(netdb_entry *, void *);
+typedef void(*netdb_iterator)(ident_hash k, struct router_info * v, void *);
 
 /** @brief iterate over all entries in netdb */
-void i2p_netdb_for_each(struct i2p_netdb * db, netdb_itr i, void * user);
+void i2p_netdb_for_each(struct i2p_netdb * db, netdb_iterator i, void * user);
 
 #endif

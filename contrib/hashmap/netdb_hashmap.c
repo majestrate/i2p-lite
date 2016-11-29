@@ -35,31 +35,33 @@
 
 #define BUCKETS 128
 
+/** TODO: implement as B-tree */
 struct netdb_hash_node {
   ident_hash h;
   struct router_info * ri;
   struct netdb_hash_node * next;
 };
 
-typedef size_t (*netdb_hash_func_t)(ident_hash *key);
-typedef int (*netdb_cmp_func_t)(struct netdb_hash_node *node, ident_hash *key);
+typedef size_t (*netdb_hash_func_t)(ident_hash key);
+typedef int (*netdb_cmp_func_t)(struct netdb_hash_node *node, ident_hash key);
 
 struct netdb_hashmap {
+  /* first entry is dummy entry, will not hold anything, acts as anchor for following nodes */
 	struct netdb_hash_node table[BUCKETS];
 	netdb_hash_func_t hash;
 	netdb_cmp_func_t cmp;
 };
 
-static size_t netdb_hashmap_hash_ident(ident_hash * k)
+static size_t netdb_hashmap_hash_ident(ident_hash k)
 {
   size_t sz = 0;
-  memcpy(&sz, *k, sizeof(size_t));
+  memcpy(&sz, k, sizeof(size_t));
   return sz % BUCKETS;
 }
 
-static int netdb_hashmap_cmp_ident(struct netdb_hash_node * node, ident_hash * k)
+static int netdb_hashmap_cmp_ident(struct netdb_hash_node * node, ident_hash k)
 {
-  return memcmp(node->h, *k, sizeof(ident_hash)) == 0;
+  return memcmp(node->h, k, sizeof(ident_hash)) == 0;
 }
 
 /** @brief free hash node and return next hash node */
@@ -67,6 +69,7 @@ struct netdb_hash_node * netdb_hash_node_free(struct netdb_hash_node * n)
 {
   struct netdb_hash_node * next = NULL;
   if(n) {
+    if(n->ri) router_info_free(&n->ri);
     next = n->next;
     free(n);
   }
@@ -91,7 +94,7 @@ void netdb_hashmap_free(struct netdb_hashmap **map)
   *map = NULL;
 }
 
-int netdb_hashmap_get(struct netdb_hashmap *map, ident_hash *key, struct router_info ** ri)
+int netdb_hashmap_get(struct netdb_hashmap *map, ident_hash key, struct router_info ** ri)
 {
   *ri = NULL;
   size_t slot = map->hash(key);
@@ -110,11 +113,11 @@ int netdb_hashmap_insert(struct netdb_hashmap *map, struct router_info * ri)
 {
   ident_hash h;
   router_info_hash(ri, &h);
-  size_t slot = map->hash(&h);
+  size_t slot = map->hash(h);
   struct netdb_hash_node ** node = &map->table[slot].next;
   struct netdb_hash_node ** prev = NULL;
   while(*node) {
-    if(map->cmp(*node, &h)) {
+    if(map->cmp(*node, h)) {
       // duplicate
       return 0;
     }
@@ -129,7 +132,7 @@ int netdb_hashmap_insert(struct netdb_hashmap *map, struct router_info * ri)
 	return 1;
 }
 
-int netdb_hashmap_remove(struct netdb_hashmap *map, ident_hash * k)
+int netdb_hashmap_remove(struct netdb_hashmap *map, ident_hash k)
 {
 	size_t slot = map->hash(k);
   struct netdb_hash_node ** node = &map->table[slot].next;
@@ -139,7 +142,7 @@ int netdb_hashmap_remove(struct netdb_hashmap *map, ident_hash * k)
       // found a match
       if(prev) (*prev)->next = (*node)->next;
       // free node
-      free(*node);
+      netdb_hash_node_free(*node);
       return 1;
     }
     prev = node;
@@ -147,4 +150,17 @@ int netdb_hashmap_remove(struct netdb_hashmap *map, ident_hash * k)
   }
   
 	return 0;
+}
+
+void netdb_hashmap_for_each(struct netdb_hashmap *map, netdb_iterator i, void * u)
+{
+  struct netdb_hash_node ** node;
+  size_t idx = BUCKETS;
+  while(--idx) {
+    node = &map->table[idx].next;
+    while(*node) {
+      i((*node)->h, (*node)->ri, u);
+      node = &(*node)->next;
+    }
+  }
 }

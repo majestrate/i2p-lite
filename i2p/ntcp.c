@@ -13,6 +13,7 @@ struct ntcp_conn
 {
   uv_tcp_t * conn;
   uint8_t readbuff[NTCP_BUFF_SIZE];
+  uint8_t writebuff[NTCP_BUFF_SIZE];
 };
 
 void ntcp_server_alloc(struct ntcp_server ** s)

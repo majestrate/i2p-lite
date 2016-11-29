@@ -19,25 +19,9 @@
 
 struct i2p_netdb
 {
-  netdb_entry * data;
   struct netdb_hashmap * map;
-  size_t sz;
-  size_t cap;
   char * rootdir;
 };
-
-void i2p_netdb_ensure_capacity(struct i2p_netdb * db)
-{
-  if(!db->data) {
-    // initial state, emtpy
-    db->data = mallocx(sizeof(netdb_entry) * db->cap, MALLOCX_ZERO);
-  } else if(db->sz == db->cap) {
-    // full
-    size_t newsize = db->cap * 2;
-    db->data = realloc(db->data, newsize * sizeof(netdb_entry));
-    db->cap = newsize;
-  }
-}
 
 /** @brief context for writing a netdb entry */
 struct netdb_write_ctx
@@ -47,7 +31,7 @@ struct netdb_write_ctx
 };
 
 /** open file for entry given its ident hash */
-int netdb_open_file(struct i2p_netdb * db, ident_hash * ident, int mode)
+int netdb_open_file(struct i2p_netdb * db, ident_hash ident, int mode)
 {
   int f = -1;
   char * fpath = NULL;
@@ -55,7 +39,7 @@ int netdb_open_file(struct i2p_netdb * db, ident_hash * ident, int mode)
   char skipdir[4] = {0};
   char base64[128] = {0};
   
-  i2p_base64_encode(*ident, sizeof(ident_hash), base64, sizeof(base64));
+  i2p_base64_encode(ident, sizeof(ident_hash), base64, sizeof(base64));
 
   if(snprintf(skipdir, sizeof(skipdir), "r%c", base64[0]) == -1)
     return f;
@@ -69,13 +53,13 @@ int netdb_open_file(struct i2p_netdb * db, ident_hash * ident, int mode)
   return f;
 }
 
-void netdb_write_entry(netdb_entry * e, void * user)
+void netdb_write_entry(ident_hash h, struct router_info * ri, void * user)
 {
   struct netdb_write_ctx * ctx = (struct netdb_write_ctx*) user;
   if(ctx->result) {
-    int fd = netdb_open_file(ctx->db, &e->ident, O_WRONLY | O_CREAT);
+    int fd = netdb_open_file(ctx->db, h, O_WRONLY | O_CREAT);
     if(fd != -1) {
-      ctx->result = router_info_write(e->ri, fd);
+      ctx->result = router_info_write(ri, fd);
       close(fd);
     } else ctx->result = 0; // fail
   }
@@ -104,26 +88,19 @@ void netdb_read_file(char * filename, void * c)
   struct netdb_read_ctx * ctx = (struct netdb_read_ctx*) c;
   int fd = open(filename, O_RDONLY);
   if(fd != -1) {
-    // obtain pointer to next entry 
-    netdb_entry * e;
-    i2p_netdb_ensure_capacity(ctx->db);
-    e = &ctx->db->data[ctx->db->sz];
+    struct router_info * ri;
     // intialize entry
-    router_info_new(&e->ri);
+    router_info_new(&ri);
     // load entry
-    if(router_info_load(e->ri, fd)) {
-      // hash it
-      router_info_hash(e->ri, &e->ident);
+    if(router_info_load(ri, fd)) {
       // add it to hashmap
-      netdb_hashmap_insert(ctx->db->map, e->ri);
-      // we added it :-D
-      ctx->db->sz ++;
+      netdb_hashmap_insert(ctx->db->map, ri);
       ctx->loaded ++;
     } else {
       // bad entry
       ctx->failed ++;
       i2p_warn(LOG_NETDB, "bad netdb entry %s", filename);
-      router_info_free(&e->ri);
+      router_info_free(&ri);
     }
     close(fd);
   } else {
@@ -138,7 +115,13 @@ void netdb_load_skiplist_subdir(char * dir, void * c)
   iterate_all_files(dir, netdb_read_file, c);
 }
 
-int i2p_netdb_find_router_info(struct i2p_netdb * db, ident_hash * ident, struct router_info ** ri)
+int i2p_netdb_put_router_info(struct i2p_netdb * db, struct router_info * ri)
+{
+  // TODO: implement
+  return 0;
+}
+
+int i2p_netdb_find_router_info(struct i2p_netdb * db, ident_hash ident, struct router_info ** ri)
 {
   return netdb_hashmap_get(db->map, ident, ri);
 }
@@ -162,29 +145,14 @@ void i2p_netdb_new(struct i2p_netdb ** db, const char * dir)
   (*db) = mallocx(sizeof(struct i2p_netdb), MALLOCX_ZERO);
   (*db)->rootdir = strdup(dir);
 
-  // init storage
-  (*db)->cap = 128;
-  i2p_netdb_ensure_capacity(*db);
-
   // init hashmap
   netdb_hashmap_init(&(*db)->map);
-}
-
-void netdb_free_entry(netdb_entry * e, void * u)
-{
-  (void) u;
-  if(e->ri) router_info_free(&e->ri);
-  e->ri = NULL;
 }
 
 void i2p_netdb_free(struct i2p_netdb ** db)
 {
   // free hashmap
   netdb_hashmap_free(&(*db)->map);
-  // free all entries
-  i2p_netdb_for_each(*db, netdb_free_entry, NULL);
-  // free data
-  free((*db)->data);
   // free path
   free((*db)->rootdir);
   // free netdb
@@ -192,14 +160,9 @@ void i2p_netdb_free(struct i2p_netdb ** db)
   *db = NULL;
 }
 
-void i2p_netdb_for_each(struct i2p_netdb * db, netdb_itr i, void * user)
+void i2p_netdb_for_each(struct i2p_netdb * db, netdb_iterator i, void * user)
 {
-  size_t idx = 0;
-  while(idx < db->sz) {
-    netdb_entry e = db->data[idx];
-    i(&e, user);
-    idx++;
-  }
+  netdb_hashmap_for_each(db->map, i, user);
 }
 
 int i2p_netdb_ensure_skiplist(struct i2p_netdb * db)
