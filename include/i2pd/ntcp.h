@@ -21,9 +21,6 @@ struct ntcp_config
 
 #define default_ntcp_config { "0.0.0.0", 1234, 1, 1 }
 
-// forward declare
-struct router_context;
-
 /** ntcp server context */
 struct ntcp_server;
 
@@ -56,11 +53,11 @@ void ntcp_server_free(struct ntcp_server ** s);
 /** @brief get i2np transport implementation for this ntcp server */
 struct i2np_transport_impl * ntcp_server_i2np_impl(struct ntcp_server * s);
 
-/** @breif callback for visiting an ntcp connection with ntcp_server_obtian */
-typedef void(*ntcp_conn_obtain_cb)(struct ntcp_server*, struct ntcp_conn *, void *);
+/** @breif callback for visiting an ntcp connection */
+typedef void(*ntcp_conn_visiter)(struct ntcp_server*, struct ntcp_conn *,const char*, void *);
 
 /** @brief obtain an ntcp connect by router's ident hash, opens session if not already open */
-void ntcp_server_obtain_conn_by_ident(struct ntcp_server * s, ident_hash h, ntcp_conn_obtain_cb cb, void * u);
+void ntcp_server_obtain_conn_by_ident(struct ntcp_server * s, ident_hash h, ntcp_conn_visiter v, void * u);
 
 /** @brief get ident hash of connection's remote ident */
 void ntcp_conn_get_ident_hash(struct ntcp_conn * c, ident_hash * h);

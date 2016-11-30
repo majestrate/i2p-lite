@@ -1,5 +1,5 @@
 /*
-  netdb_hashmap.h -- i2p netdb hashmap implementation based off Janne Kulama's
+  ntcp_conn_hashmap.h -- i2p ntcp connection hashmap implementation based off Janne Kulama's
                      generic hashmap implementation
  
   Copyright (c) 2011, Janne Kulmala <janne.t.kulmala@tut.fi>.
@@ -31,28 +31,27 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _I2PD_NETDB_HASHMAP_H_
-#define _I2PD_NETDB_HASHMAP_H_
+#ifndef _I2PD_NTCP_CONN_HASHMAP_H_
+#define _I2PD_NTCP_CONN_HASHMAP_H_
 
 #include <i2pd/datatypes.h>
-#include <i2pd/netdb.h>
-#include <i2pd/ri.h>
+#include <i2pd/ntcp.h>
 
-struct netdb_hashmap;
+struct ntcp_conn_hashmap;
 
-void netdb_hashmap_init(struct netdb_hashmap **map);
-void netdb_hashmap_free(struct netdb_hashmap **map);
+void ntcp_conn_hashmap_init(struct ntcp_conn_hashmap **map);
+void ntcp_conn_hashmap_free(struct ntcp_conn_hashmap **map);
 
-/** @brief get router info by ident hash, returns 1 if found otherwise returns 0 */
-int netdb_hashmap_get(struct netdb_hashmap *map, ident_hash key, struct router_info ** ri);
+int ntcp_conn_hashmap_get(struct ntcp_conn_hashmap *map, ident_hash key, struct ntcp_conn ** c);
 
-/** @brief insert router info into hashmap, returns 0 if already in hashmap otherwise returns 1 */
-int netdb_hashmap_insert(struct netdb_hashmap *map, struct router_info *ri);
+int ntcp_conn_hashmap_insert(struct ntcp_conn_hashmap *map, struct ntcp_conn * c);
 
-/** @brief remove rotuer info by ident hash, returns 1 if removed otherwise return 0 */
-int netdb_hashmap_remove(struct netdb_hashmap *map, ident_hash key);
+/** @brief remove connection by ident hash, returns 1 if removed otherwise return 0 */
+int ntcp_conn_hashmap_remove(struct ntcp_conn_hashmap *map, ident_hash key);
+
+typedef void (*ntcp_conn_hashmap_iterator)(ident_hash, struct ntcp_conn *, void *);
 
 /** @brief iterate over every item in hashmap */
-void netdb_hashmap_for_each(struct netdb_hashmap *map, netdb_iterator i, void * u);
+void ntcp_conn_hashmap_for_each(struct ntcp_conn_hashmap *map, ntcp_conn_hashmap_iterator i, void * u);
 
 #endif

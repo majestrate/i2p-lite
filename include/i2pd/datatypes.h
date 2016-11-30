@@ -7,5 +7,8 @@
 #define IDENT_HASH_SIZE 32
 typedef uint8_t ident_hash[IDENT_HASH_SIZE];
 
+/** get as uint64_t */
+#define ident_hash_u64(h, offset) ((uint64_t*)(&h[offset]))
+
 #endif
 

@@ -1,10 +1,5 @@
-#include <i2pd/transport.h>
+#include "transport_internal.h"
 #include <i2pd/memory.h>
-
-struct i2np_transport
-{
-  uv_loop_t * loop;
-};
 
 
 void i2np_transport_new(struct i2np_transport ** t, uv_loop_t * l)
@@ -15,9 +10,6 @@ void i2np_transport_new(struct i2np_transport ** t, uv_loop_t * l)
 
 void i2np_transport_free(struct i2np_transport ** t)
 {
-}
-
-uv_loop_t * i2np_transport_get_loop(struct i2np_transport * t)
-{
-  return t->loop;
+  free(*t);
+  *t = NULL;
 }

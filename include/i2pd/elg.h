@@ -8,7 +8,7 @@
 typedef uint8_t elg_key[ELG_KEY_SIZE];
 
 /** derived shared secret */
-#define DH_KEY_SIZE ELG_KEY_SIZE
+#define DH_KEY_SIZE 32
 typedef uint8_t dh_shared_key[DH_KEY_SIZE];
 
 /** block for elg encryption */
@@ -34,7 +34,7 @@ void elg_DH_free(struct elg_DH ** k);
 int elg_DH_alloc(struct elg_DH ** k);
 
 /** @brief generate dh keys */
-void elg_DH_generate(struct elg_DH * k, elg_key priv, elg_key pub);
+void elg_DH_generate(struct elg_DH * k, elg_key * priv, elg_key * pub);
 
 /** @brief agree on a shared key */
 void elg_DH_agree(struct elg_DH * k, elg_key pub, dh_shared_key * shared);

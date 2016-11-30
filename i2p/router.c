@@ -1,32 +1,11 @@
-#include <i2pd/router.h>
+#include "router_internal.h"
+#include "transport_internal.h"
 #include <i2pd/log.h>
 #include <i2pd/memory.h>
-#include <i2pd/transport.h>
 #include <i2pd/util.h>
 
 #include <string.h>
 #include <sys/stat.h>
-
-struct router_context
-{
-
-  // mainloop
-  uv_loop_t * loop;
-  
-  // base directory for data
-  char * data_dir;
-  // file for our router info
-  char * router_info;
-  // file for our router private keys
-  char * router_keys;
-
-  // network database storage
-  struct i2p_netdb * netdb;  
-  // transport layer
-  struct i2np_transport * transport;
-  // ntcp server
-  struct ntcp_server * ntcp;
-};
 
 
 void router_context_new(struct router_context ** ctx, struct router_context_config cfg)
@@ -36,33 +15,28 @@ void router_context_new(struct router_context ** ctx, struct router_context_conf
   (*ctx)->router_info = path_join(cfg.datadir, "router.info", 0);
   (*ctx)->router_keys = path_join(cfg.datadir, "router.keys", 0);
   (*ctx)->loop = cfg.loop;
-  
+
+  char * dir = path_join(cfg.datadir, "netDb", 0);
+  // init netdb parameters
+  i2p_netdb_new(&(*ctx)->netdb, dir);
+  free(dir);
   
   // init transports
   i2np_transport_new(&(*ctx)->transport, (*ctx)->loop);
 
+  // inject router context
+  (*ctx)->transport->router = *ctx;
+  
   // alloc/configure ntcp
   ntcp_server_alloc(&(*ctx)->ntcp);
   ntcp_server_configure((*ctx)->ntcp, cfg.ntcp);
 
   // attach ntcp to transports
   ntcp_server_attach((*ctx)->ntcp, (*ctx)->transport);
-
-  char * dir = path_join(cfg.datadir, "netDb", 0);
-  // init netdb parameters
-  i2p_netdb_new(&(*ctx)->netdb, dir);
-  free(dir);
 }
 
 void router_context_free(struct router_context ** ctx)
 {
-
-  // detach ntcp
-  ntcp_server_detach((*ctx)->ntcp);
-
-  // free ntcp
-  ntcp_server_free(&(*ctx)->ntcp);
-
   // free transport muxer
   i2np_transport_free(&(*ctx)->transport);
 
@@ -108,6 +82,11 @@ int router_context_load(struct router_context * ctx)
   }
 }
 
+void router_context_close(struct router_context * ctx)
+{
+  ntcp_server_detach(ctx->ntcp);
+  // wait for ntcp disposal
+}
 
 void router_context_run(struct router_context * ctx)
 {

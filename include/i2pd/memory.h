@@ -3,6 +3,8 @@
 #include <jemalloc/jemalloc.h>
 #include "i2pendian.h"
 
+#define xmalloc(sz) mallocx(sz, MALLOCX_ZERO)
+
 uint16_t buf16toh(const void *buf);
  
 uint32_t buf32toh(const void *buf);

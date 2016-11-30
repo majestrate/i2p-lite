@@ -2,11 +2,10 @@
 #define I2P_EDDSA_H_
 #include <stdint.h>
 #include <unistd.h>
-#include <sodium/crypto_sign.h>
 
-#define EDDSA_PRIVKEY_LENGTH crypto_sign_SEEDBYTES
-#define EDDSA_PUBKEY_LENGTH crypto_sign_PUBLICKEYBYTES
-#define EDDSA_SIG_LENGTH crypto_sign_BYTES
+#define EDDSA_PRIVKEY_LENGTH 32
+#define EDDSA_PUBKEY_LENGTH 32
+#define EDDSA_SIG_LENGTH 64
 
 typedef uint8_t eddsa_privkey[EDDSA_PRIVKEY_LENGTH];
 typedef uint8_t eddsa_pubkey[EDDSA_PUBKEY_LENGTH];

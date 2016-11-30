@@ -5,6 +5,7 @@
 
 #include <arpa/inet.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 void i2p_addr_process_dict(char * k, char * v, void * u)
 {
@@ -36,4 +37,11 @@ void i2p_addr_free(struct i2p_addr ** addr)
   free((*addr)->style);
   free(*addr);
   *addr = NULL;
+}
+
+char * i2p_addr_port_str(struct i2p_addr * addr)
+{
+  char buf[10] = {0};
+  snprintf(buf, sizeof(buf), "%d", ntohs(addr->port));
+  return strdup(buf);
 }

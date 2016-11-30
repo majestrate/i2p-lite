@@ -19,5 +19,7 @@ uint8_t * i2p_addr_read_dict(struct i2p_addr ** addr, uint8_t * b, size_t l);
 /** @brief free an i2p addr */
 void i2p_addr_free(struct i2p_addr ** addr);
 
+/** @brief get string represenation of port, caller must free*/
+char * i2p_addr_port_str(struct i2p_addr * addr);
 
 #endif
