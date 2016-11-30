@@ -4,7 +4,7 @@
 #include <i2pd/encoding.h>
 #include <i2pd/log.h>
 #include <i2pd/ri.h>
-#include <i2pd/netdb_hashmap.h>
+#include "netdb_hashmap.h"
 
 #include <assert.h>
 #include <dirent.h>

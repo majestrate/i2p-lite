@@ -106,7 +106,8 @@ int main(int argc, char * argv[])
     default_crypto_config
   };
 
-  config.router.loop = uv_default_loop();
+  uv_loop_t * loop = uv_default_loop();
+  config.router.loop = loop;
   
   i2p_config_for_each(cfg, iter_config_main, &config);
 
@@ -144,7 +145,6 @@ int main(int argc, char * argv[])
   if(router_context_load(router))
   {
     i2p_info(LOG_MAIN, "i2p router context loaded up");
-    uv_loop_t * loop = uv_default_loop();
     router_context_run(router);
     uv_run(loop, UV_RUN_DEFAULT);
     i2p_info(LOG_MAIN, "i2p router shutting down");

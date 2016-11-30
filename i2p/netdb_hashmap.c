@@ -30,7 +30,7 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <i2pd/netdb_hashmap.h>
+#include "netdb_hashmap.h"
 #include <i2pd/memory.h>
 
 #define BUCKETS 128
