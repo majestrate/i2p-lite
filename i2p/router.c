@@ -57,7 +57,7 @@ int router_context_load(struct router_context * ctx)
 {
   int ret = 1;
 
-  if(!is_dir(ctx->data_dir)) {
+  if(!check_file(ctx->data_dir)) {
     i2p_info(LOG_ROUTER, "creating data directory %s", ctx->data_dir);
     if(mkdir(ctx->data_dir, 0700) == -1) {
       i2p_error(LOG_ROUTER, "failed to create %s: %s", ctx->data_dir, strerror(errno));

@@ -136,7 +136,7 @@ int i2p_netdb_load_all(struct i2p_netdb * db)
   i2p_info(LOG_NETDB, "loading netdb from %s", db->rootdir);
   iterate_all_dirs(db->rootdir, netdb_load_skiplist_subdir, &c);
   i2p_info(LOG_NETDB, "loaded %lu netdb entries", c.loaded);
-  return 1;
+  return c.loaded;
 }
 
 void i2p_netdb_new(struct i2p_netdb ** db, const char * dir)
