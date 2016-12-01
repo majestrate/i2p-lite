@@ -16,7 +16,11 @@ struct router_context
   char * router_info;
   // file for our router private keys
   char * router_keys;
-
+  // file for floodfill boostrap
+  char * floodfill;
+  // url for reseed
+  char * reseed;
+  
   // network database storage
   struct i2p_netdb * netdb;  
   // transport layer

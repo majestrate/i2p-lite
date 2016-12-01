@@ -49,11 +49,13 @@ int main(int argc, char * argv[])
 
   int opt;
   char * configfile = NULL;
+  char * floodfill_bootstrap = NULL;
+  char * reseed_url = NULL;
   int loglevel = L_INFO;
 
   struct router_context * router = NULL;
   
-  while((opt = getopt(argc, argv, "vhf:")) != -1) {
+  while((opt = getopt(argc, argv, "vhf:b:u:")) != -1) {
     switch(opt) {
     case 'h':
       printhelp(argv[0]);
@@ -64,6 +66,11 @@ int main(int argc, char * argv[])
     case 'v':
       loglevel = L_DEBUG;
       break;
+    case 'b':
+      floodfill_bootstrap = argv[optind-1];
+      break;
+    case 'u':
+      reseed_url = argv[optind-1];
     default:
       printhelp(argv[0]);
       return 1;
@@ -77,6 +84,8 @@ int main(int argc, char * argv[])
     char * home = getenv("HOME");
     if(home)
       configfile = path_join(home, ".i2p.conf", 0);
+    else
+      configfile = path_join(".", "i2p.conf", 0); // no $HOME ? lolz okay
   }
   
   i2p_log_init();
@@ -99,13 +108,14 @@ int main(int argc, char * argv[])
     i2p_error(LOG_MAIN, "failed to load %s", configfile);
     return 1;
   }
+  
   free(configfile);
-
+  
   struct main_config config = {
     default_router_context_config,
     default_crypto_config
   };
-
+  
   uv_loop_t * loop = uv_default_loop();
   config.router.loop = loop;
   
@@ -126,6 +136,18 @@ int main(int argc, char * argv[])
         memcpy(config.router.datadir, dir, dlen);
       free(dir);
     }
+  }
+  /** floodfill from bootstrap specified */
+  if(floodfill_bootstrap) {
+    int flen = strlen(floodfill_bootstrap);
+    if(flen < sizeof(i2p_filename)) {
+      memcpy(config.router.floodfill, floodfill_bootstrap, flen);
+    }
+  }
+
+  /** reseed url manually specified */
+  if(reseed_url) {
+    config.router.reseed_url = reseed_url;
   }
   
   i2p_info(LOG_MAIN, "%s %s starting up", I2PD_NAME, I2PD_VERSION);
