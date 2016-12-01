@@ -165,6 +165,11 @@ void i2p_netdb_for_each(struct i2p_netdb * db, netdb_iterator i, void * user)
   netdb_hashmap_for_each(db->map, i, user);
 }
 
+size_t i2p_netdb_loaded_peer_count(struct i2p_netdb * db)
+{
+  return netdb_hashmap_size(db->map);
+}
+
 int i2p_netdb_ensure_skiplist(struct i2p_netdb * db)
 {
   DIR * d = opendir(db->rootdir);

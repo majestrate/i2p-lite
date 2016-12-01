@@ -18,13 +18,16 @@ typedef uint8_t dsa_signature[DSA_SIG_LENGTH];
 
 void dsa_keygen(dsa_privkey * priv, dsa_pubkey * pub);
 
-void dsa_Verify_new(struct dsa_Verify ** d, dsa_pubkey * pubkey);
+void dsa_Verify_new(struct dsa_Verify ** d, dsa_pubkey pubkey);
 void dsa_Verify_free(struct dsa_Verify ** d);
 
-/** @brief verify dsa signature */
-int dsa_verify_signature(struct dsa_Verify * d, const uint8_t * data, const size_t len, dsa_signature * sig);
+/** @brief get pointer to internal public key */
+void dsa_Verify_get_key(struct dsa_Verify * d, uint8_t ** k);
 
-void dsa_Sign_new(struct dsa_Sign **d, dsa_privkey * priv);
+/** @brief verify dsa signature */
+int dsa_verify_signature(struct dsa_Verify * d, const uint8_t * data, const size_t len, dsa_signature sig);
+
+void dsa_Sign_new(struct dsa_Sign **d, dsa_privkey priv);
 void dsa_Sign_free(struct dsa_Sign **d);
 
 /** @brief sign data with dsa signer */

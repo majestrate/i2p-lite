@@ -50,6 +50,7 @@ struct netdb_hashmap {
 	struct netdb_hash_node table[BUCKETS];
 	netdb_hash_func_t hash;
 	netdb_cmp_func_t cmp;
+  size_t sz;
 };
 
 static size_t netdb_hashmap_hash_ident(ident_hash k)
@@ -78,7 +79,7 @@ struct netdb_hash_node * netdb_hash_node_free(struct netdb_hash_node * n)
 
 void netdb_hashmap_init(struct netdb_hashmap **map)
 {
-  *map = mallocx(sizeof(struct netdb_hashmap), MALLOCX_ZERO);
+  *map = xmalloc(sizeof(struct netdb_hashmap));
 	(*map)->hash = netdb_hashmap_hash_ident;
 	(*map)->cmp = netdb_hashmap_cmp_ident;
 }
@@ -129,6 +130,7 @@ int netdb_hashmap_insert(struct netdb_hashmap *map, struct router_info * ri)
   (*node)->ri = ri;
   if(prev)
     (*prev)->next = *node;
+  map->sz ++;
 	return 1;
 }
 
@@ -143,6 +145,7 @@ int netdb_hashmap_remove(struct netdb_hashmap *map, ident_hash k)
       if(prev) (*prev)->next = (*node)->next;
       // free node
       netdb_hash_node_free(*node);
+      map->sz --;
       return 1;
     }
     prev = node;
@@ -163,4 +166,9 @@ void netdb_hashmap_for_each(struct netdb_hashmap *map, netdb_iterator i, void * 
       node = &(*node)->next;
     }
   }
+}
+
+size_t netdb_hashmap_size(struct netdb_hashmap * map)
+{
+  return map->sz;
 }

@@ -16,12 +16,6 @@ typedef uint8_t dh_shared_key[DH_KEY_SIZE];
 typedef uint8_t elg_block[ELG_BLOCK_SIZE];
 #define ELG_DATA_SIZE 222
 
-/** @brief intialize elg block with data */
-void elg_block_init(elg_block * block, const uint8_t * d, const size_t l);
-
-/** @brief get data part of elg block */
-uint8_t * elg_block_data(elg_block * block);
-
 /** @brief clear a elg block */
 void elg_block_wipe(elg_block * block);
 
@@ -48,13 +42,16 @@ struct elg_Encryption;
 /** @brief free previously allocated elg encryption context */
 void elg_Encryption_free(struct elg_Encryption ** e);
 /** @brief allocate new elg encryption context, copies key data */
-void elg_Encryption_new(struct elg_Encryption ** e, elg_key * pub);
+void elg_Encryption_new(struct elg_Encryption ** e, elg_key pub);
+
+/** @brief set a pointer to internal public key data */
+void elg_Encryption_get_key(struct elg_Encryption * e, uint8_t ** data);
 
 /** @brief do elg encryption on a block */ 
 void elg_Encrypt(struct elg_Encryption * e, elg_block * block, int zeroPad);
 
 /** @brief do elg decryption on a block */
-int elg_Decrypt(elg_key * priv, elg_block * block, int zeroPad);
+int elg_Decrypt(elg_key priv, elg_block * block, int zeroPad);
 
 #endif
 

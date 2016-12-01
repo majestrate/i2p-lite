@@ -10,7 +10,7 @@
 struct ntcp_config
 {
   // address to bind to
-  i2p_hostname addr;
+  char * addr;
   // port to bind to
   uint16_t port;
   // try binding to v4?
@@ -19,7 +19,10 @@ struct ntcp_config
   int try_ip6;
 };
 
-#define default_ntcp_config { "0.0.0.0", 1234, 1, 1 }
+void ntcp_config_new(struct ntcp_config ** conf);
+void ntcp_config_free(struct ntcp_config ** conf);
+
+#define default_ntcp_config { NULL, 1234, 1, 1 }
 
 /** ntcp server context */
 struct ntcp_server;
@@ -43,6 +46,10 @@ void ntcp_server_attach(struct ntcp_server * s, struct i2np_transport * t);
 
 /** @brief detach ntcp server from previously attached transport layer */
 void ntcp_server_detach(struct ntcp_server * s);
+
+typedef void (*ntcp_server_close_handler)(struct ntcp_server *, void *);
+
+void ntcp_server_add_close_handler(struct ntcp_server * s, ntcp_server_close_handler h, void * user);
 
 /** @brief close server socket */
 void ntcp_server_close(struct ntcp_server * s);

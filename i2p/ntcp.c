@@ -13,6 +13,26 @@
 #define ntcp_serv_uv_loop(s) ntcp_router_context(s)->loop
 #define ntcp_conn_uv_loop(c) ntcp_serv_uv_loop(c->server)
 
+void ntcp_config_new(struct ntcp_config ** c)
+{
+  *c = xmalloc(sizeof(struct ntcp_config));
+}
+
+void ntcp_config_free(struct ntcp_config ** c)
+{
+  free((*c)->addr);
+  free(*c);
+  *c = NULL;
+}
+
+/** @brief event for handling close of ntcp server socket */
+struct ntcp_server_close_hook
+{
+  ntcp_server_close_handler hook;
+  void * user;
+  struct ntcp_server_close_hook * next;
+};
+
 struct ntcp_server
 {
   uv_tcp_t serv;
@@ -20,6 +40,9 @@ struct ntcp_server
   int ipv4; // set to 1 if ipv4 capable otherwise 0
   int ipv6; // set to 1 if ipv6 capable otherwise 0
   int prefer_v6; // set to 1 if we prefer ipv6 over ipv4 otherwise 0
+  struct i2np_transport_impl i2np_impl; // i2np transport implementation hooks
+  struct i2np_transport * transport; // i2np transport parent
+  struct ntcp_server_close_hook * close_hooks;
 };
 
 // hook to be called after connection is established and handshake done
@@ -54,6 +77,10 @@ struct ntcp_conn
 {
   /** hooks to call on established */
   struct ntcp_conn_established_hook * established_hooks;
+
+  /** current connection attempt */
+  struct ntcp_conn_connect_event * connect;
+  
   /** set to 1 if established otherwise 0 */
   int established;
   /** connection handle, user data points to this ntcp_conn */
@@ -127,7 +154,7 @@ static void ntcp_conn_add_established_hook(struct ntcp_conn * conn, ntcp_conn_vi
 }
 
 /** read allocator callback for libuv */
-static void ntcp_conn_alloc_cb(uv_handle_t * handle, size_t suggested, uv_buf_t *buf)
+static void ntcp_conn_read_alloc_cb(uv_handle_t * handle, size_t suggested, uv_buf_t *buf)
 {
   struct ntcp_conn * conn = (struct ntcp_conn *) handle->data;
   buf->base = &conn->readbuff[0];
@@ -162,7 +189,7 @@ static void ntcp_free_connect_event(struct ntcp_conn_connect_event ** e)
   *e = NULL;
 }
 
-
+/** uv_work handler for generating session request */
 static void ntcp_conn_gen_session_request(uv_work_t * work)
 {
   struct ntcp_conn_connect_event * ev = (struct ntcp_conn_connect_event *) work->data;
@@ -184,10 +211,36 @@ static void ntcp_conn_gen_session_request(uv_work_t * work)
   }
 }
 
+static void ntcp_conn_handle_raw_read(uv_stream_t * s, ssize_t nread, const uv_buf_t * buf)
+{
+  struct ntcp_conn * conn = (struct ntcp_conn *) s->data;
+}
+
 static void ntcp_conn_after_gen_session_request(uv_work_t * work, int status)
 {
+  char buf[1024] = {0};
   struct ntcp_conn_connect_event * ev = (struct ntcp_conn_connect_event *) work->data;
-  // send actual request
+  if(status) {
+    snprintf(buf, sizeof(buf), "ntcp connection generate session request failed: %s", uv_strerror(status));
+    char * msg = strdup(buf);
+    // call hooks with fail
+    ntcp_conn_call_established_hooks(ev->conn, NULL, msg);
+    ntcp_free_connect_event(&ev);
+    free(msg);
+  } else {
+    // send actual request
+    ntcp_conn_raw_write(ev->conn, ev->conn->writebuff, 288);
+    // start reading data from remote
+    status = uv_read_start((uv_stream_t*)&ev->conn->conn, ntcp_conn_read_alloc_cb, ntcp_conn_handle_raw_read);
+    if (status) {
+      snprintf(buf, sizeof(buf), "ntcp connection could not start reading: %s", uv_strerror(status));
+      char * msg = strdup(buf);
+      // call hooks with fail
+      ntcp_conn_call_established_hooks(ev->conn, NULL, msg);
+      ntcp_free_connect_event(&ev);
+      free(msg);
+    }
+  }
 }
 
 
@@ -261,7 +314,9 @@ static void ntcp_conn_handle_resolve(uv_getaddrinfo_t * req, int status, struct 
     }
     
     if (saddr) {
-      // resolve succses, try connecting
+      // resolve succses, initialize tcp handle for connection
+      uv_tcp_init(ntcp_conn_uv_loop(ev->conn), &ev->conn->conn);
+      // try connecting
       int r = uv_tcp_connect(&ev->connect, &ev->conn->conn, saddr, ntcp_conn_outbound_connect_cb);
       if(r) {
         // libuv connect fail
@@ -297,9 +352,14 @@ static void ntcp_new_connect_event(struct ntcp_conn_connect_event **e, struct nt
 
 static int ntcp_conn_try_connect(struct ntcp_conn * conn, struct i2p_addr * addr)
 {
-  struct ntcp_conn_connect_event * ev = NULL;
-  ntcp_new_connect_event(&ev, conn, addr);
-  return uv_getaddrinfo(ntcp_conn_uv_loop(conn), &ev->resolve, ntcp_conn_handle_resolve, ev->host, ev->port, NULL);
+  if(conn->established) return 0; // we are already connected and have a session established
+  if(conn->connect) {
+    // get rid of any existing connect event
+    ntcp_free_connect_event(&conn->connect);
+  }
+  ntcp_new_connect_event(&conn->connect, conn, addr);
+  // resolve address
+  return uv_getaddrinfo(ntcp_conn_uv_loop(conn), &conn->connect->resolve, ntcp_conn_handle_resolve, conn->connect->host, conn->connect->port, NULL);
 }
 
 
@@ -318,22 +378,43 @@ void ntcp_server_free(struct ntcp_server ** s)
 
 void ntcp_server_configure(struct ntcp_server * s, struct ntcp_config c)
 {
+  // TODO: add settings here
 }
 
 void ntcp_server_attach(struct ntcp_server * s, struct i2np_transport * t)
 {
   assert(uv_tcp_init(t->loop, &s->serv) != -1);
   s->serv.data = t->router;
+  i2np_transport_register(t, &s->i2np_impl);
+  s->transport = t;
+}
+
+void ntcp_server_detach(struct ntcp_server * s)
+{
+  i2np_transport_deregister(s->transport, &s->i2np_impl);
 }
 
 // called when ntcp server closes socket
 void ntcp_server_closed_callback(uv_handle_t * h)
 {
   struct router_context * router = (struct router_context *) h->data;
+  // call hooks
+  struct ntcp_server * serv = router->ntcp;
+  struct ntcp_server_close_hook * hook = serv->close_hooks;
+  struct ntcp_server_close_hook * cur = hook;
+  while(cur) {
+    // call the hook if it's set
+    if(cur->hook)
+      cur->hook(serv, cur->user);
+
+    hook = cur->next;
+    free(cur);
+    cur = hook;
+  }
   ntcp_server_free(&router->ntcp);
 }
 
-void ntcp_server_detach(struct ntcp_server * s)
+void ntcp_server_close(struct ntcp_server * s)
 {
   uv_close((uv_handle_t*)&s->serv, ntcp_server_closed_callback);
 }

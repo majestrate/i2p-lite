@@ -5,6 +5,7 @@
 #include <i2pd/util.h>
 
 #include <string.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 
 
@@ -49,6 +50,10 @@ void router_context_free(struct router_context ** ctx)
   free((*ctx)->data_dir);
   free((*ctx)->router_info);
   free((*ctx)->router_keys);
+  free((*ctx)->external_addr4);
+  free((*ctx)->external_port4);
+  free((*ctx)->external_addr6);
+  free((*ctx)->external_port6);
   
   // free router context
   free(*ctx);
@@ -59,91 +64,108 @@ int router_context_load(struct router_context * ctx)
 {
 
   if(!check_file(ctx->data_dir)) {
-    i2p_info(LOG_ROUTER, "creating data directory %s", ctx->data_dir);
+    i2p_debug(LOG_ROUTER, "creating data directory %s", ctx->data_dir);
     if(mkdir(ctx->data_dir, 0700) == -1) {
       i2p_error(LOG_ROUTER, "failed to create %s: %s", ctx->data_dir, strerror(errno));
       return 0;
     }
   }
-  struct router_identity * identity = NULL;
-  struct router_info * our_ri = NULL;
-  if(check_file(ctx->router_keys)) {
-    // we have it
-    int fd = open(ctx->router_keys, O_RDONLY);
-    if(fd == -1) {
-      i2p_error(LOG_ROUTER, "failed to read router identity at %s, %s", ctx->router_keys, strerror(errno));
+  if(!check_file(ctx->router_keys)) {
+    // no router.keys 
+    // generate our router identity keys, this saves router.keys to disk
+    if(!router_context_regenerate_identity(ctx, DEFAULT_IDENTITY_SIG_TYPE)) {
+      // error, wut ?
+      i2p_error(LOG_ROUTER, "Failed to generate new router identity, %s", strerror(errno));
       return 0;
-    } else {
-      router_identity_new(&identity);
-      if(router_identity_read(identity, fd)) {
-        i2p_info(LOG_ROUTER, "loaded router identity from %s", ctx->router_keys);
-        router_identity_get_router_info(identity, &our_ri);
-      } else {
-        // failed to read identity
-        i2p_error(LOG_ROUTER, "failed to parse router identity at %s, %s", ctx->router_keys, strerror(errno));
-        router_identity_free(&identity);
-        close(fd);
-        return 0;
-      }
-      close(fd);
-    }
-  } else {
-    int fd = open(ctx->router_keys, O_CREAT | O_WRONLY);
-    if(fd == -1) {
-      i2p_error(LOG_ROUTER, "failed create router identity at %s: %s", ctx->router_keys, strerror(errno));
-      return 0;
-    } else {
-      router_identity_new(&identity);
-      // generate router keys
-      i2p_info(LOG_ROUTER, "generating new router identity at %s", ctx->router_keys);
-      router_identity_regenerate(identity, DEFAULT_ROUTER_IDENTITY_SIG_TYPE);
-      router_identity_write(identity, fd);
-      close(fd);
-      router_identity_get_router_info(identity, &our_ri);
-      // write our router info
-      if (check_file(ctx->router_info))
-        fd = open(ctx->router_info, O_WRONLY);
-      else
-        fd = open(ctx->router_info, O_CREAT | O_WRONLY);
-      if(fd == -1) {
-        i2p_error(LOG_ROUTER, "failed to open router info file for writing, %s", strerror(errno));
-        router_identity_free(&identity);
-        router_info_free(&our_ri);
-        return 0;
-      } else {
-        router_info_write(our_ri, fd);
-        close(fd);
-      }
     }
   }
-  if (our_ri) {
-    char * i = router_info_base64_ident(our_ri);
+
+  // load router.keys
+  int fd = open(ctx->router_keys, O_RDONLY);
+  if(fd == -1) {
+    i2p_error(LOG_ROUTER, "failed to read router identity at %s, %s", ctx->router_keys, strerror(errno));
+    return 0;
+  } else {
+    // load existing keys
+    i2p_identity_keys_new(&ctx->privkeys);
+    if(i2p_identity_keys_read(ctx->privkeys, fd)) {
+      struct router_info_config * ri_conf = NULL;
+      i2p_debug(LOG_ROUTER, "loaded router identity private keys from %s", ctx->router_keys);
+      router_info_config_new(&ri_conf);
+      // only enable ntcp 4
+      // TODO: make configurable
+      ntcp_config_new(&ri_conf->ntcp);
+
+      ri_conf->ntcp->try_ip4 = 1;
+      
+      if (ctx->external_addr4)
+        ri_conf->ntcp->addr = strdup(ctx->external_addr4);
+      if(ctx->external_port4)
+        ri_conf->ntcp->addr = strdup(ctx->external_port4);
+
+      // saves router.info to disk
+      router_context_update_router_info(ctx, ri_conf);
+      router_info_config_free(&ri_conf);
+    } else {
+      // failed to read identity
+      i2p_error(LOG_ROUTER, "failed to parse router identity at %s, %s", ctx->router_keys, strerror(errno));
+      i2p_identity_keys_free(&ctx->privkeys);
+      close(fd);
+      return 0;
+    }
+    close(fd);
+  }
+  fd = open(ctx->router_info, O_RDONLY);
+  if (fd == -1) {
+    i2p_error(LOG_ROUTER, "couldn't load router info file %s, %s", ctx->router_info, strerror(errno));
+    i2p_identity_keys_free(&ctx->privkeys);
+    return 0;
+  } else {
+    router_info_new(&ctx->our_ri);
+    if(!router_info_load(ctx->our_ri, fd)) {
+      i2p_error(LOG_ROUTER, "couldn't parse router info file %s, %s", ctx->router_info, strerror(errno));
+      close(fd);
+      router_info_free(&ctx->our_ri);
+      i2p_identity_keys_free(&ctx->privkeys);
+      return 0;
+    }
+    close(fd);
+  }
+  if (ctx->our_ri) {
+    char * i = router_info_base64_ident(ctx->our_ri);
     i2p_info(LOG_ROUTER, "our router is %s", i);
     free(i);
   } else {
     // wtf? router info not loaded
     i2p_error(LOG_ROUTER, "failed to get our router info, was null");
-    router_identity_free(&identity);
+    i2p_identity_keys_free(&ctx->privkeys);
     return 0;
   }
   
-  if(!i2p_netdb_ensure_skiplist(ctx->netdb)) {
+  if(i2p_netdb_ensure_skiplist(ctx->netdb)) {
+    // TOOD: should we put our router into network database skiplist?
+    // run load up netdb
+    i2p_netdb_load_all(ctx->netdb);
+  } else {
     i2p_error(LOG_ROUTER, "failed to created netdb skiplist directory, %s", strerror(errno));
+    i2p_identity_keys_free(&ctx->privkeys);
+    router_info_free(&ctx->our_ri);
     return 0;
   }
   return 1;
 }
 
-void router_context_close(struct router_context * ctx)
+void router_context_close(struct router_context * ctx, router_context_close_hook hook)
 {
   ntcp_server_detach(ctx->ntcp);
-  // wait for ntcp disposal
+  ntcp_server_close(ctx->ntcp);
 }
 
-static void router_init_netdb(struct router_context * ctx)
+static void router_context_init_netdb(struct router_context * ctx)
 {
-  if(!i2p_netdb_load_all(ctx->netdb)) {
-    // no peers
+  size_t sz = i2p_netdb_loaded_peer_count(ctx->netdb);
+  if(sz < NETDB_MIN_PEERS) {
+    // not enough peers
     if(ctx->floodfill) {
       // try from router info file
       i2p_info(LOG_ROUTER, "no peers, trying bootstrap from router info file at %s", ctx->floodfill);
@@ -160,7 +182,7 @@ static void router_init_netdb(struct router_context * ctx)
           char * ident = router_info_base64_ident(ri);
           if (router_info_verify(ri)) {
             if(router_info_is_floodfill(ri)) {
-              router_try_bootstrap_from_floodfill(ctx, ri);
+              router_context_try_bootstrap_from_floodfill(ctx, ri);
             } else {
               // not a floodfill
               i2p_error(LOG_ROUTER, "%s is not a floodfill router", ident);
@@ -181,10 +203,65 @@ static void router_init_netdb(struct router_context * ctx)
       }
     } else if (ctx->reseed) {
       // bootstrap from reseed
-      router_try_reseed_from(ctx, ctx->reseed);
+      router_context_try_reseed_from(ctx, ctx->reseed);
     } else {
       i2p_error(LOG_ROUTER, "no floodfill to bootstrap from and reseed not enabled");
     }
+  } else {
+    i2p_info(LOG_ROUTER, "we have loaded %ul peers", sz);
   }
   
+}
+
+int router_context_regenerate_identity(struct router_context * ctx, uint16_t sigtype)
+{
+  int res = 0;
+  struct i2p_identity_keys * k = NULL;
+  int fd = open(ctx->router_keys, O_CREAT | O_WRONLY, 0600);
+  if(fd == -1) return 0;
+  i2p_identity_keys_new(&k);
+  i2p_identity_keys_generate(k, sigtype);
+  if(i2p_identity_keys_write(k, fd)) res = 1;
+  close(fd);
+  return res;
+}
+
+void router_context_try_bootstrap_from_floodfill(struct router_context * ctx, struct router_info * ri)
+{
+  if(router_info_is_floodfill(ri)) {
+    char * ident = router_info_base64_ident(ri);
+    i2p_info(LOG_ROUTER, "try bootstrap from %s", ident);
+    // do floodfill boostrap here
+    
+    free(ident);
+  }
+}
+
+void router_context_try_reseed_from(struct router_context * ctx, const char * url)
+{
+  if(!url) return;
+}
+
+
+void router_context_run(struct router_context * ctx)
+{
+  
+}
+
+void router_context_update_router_info(struct router_context * ctx, struct router_info_config * conf)
+{
+}
+
+void router_info_config_new(struct router_info_config ** c)
+{
+  *c = xmalloc(sizeof(struct router_info_config));
+}
+
+void router_info_config_free(struct router_info_config ** c)
+{
+  if((*c)->ntcp) ntcp_config_free(&(*c)->ntcp);
+  free((*c)->ssu);
+  free((*c)->caps);
+  free(*c);
+  *c = NULL;
 }

@@ -3,6 +3,7 @@
 #include <uv.h>
 #include <i2pd/router.h>
 #include <i2pd/transport.h>
+#include <i2pd/tunnels.h>
 
 struct router_context
 {
@@ -16,17 +17,32 @@ struct router_context
   char * router_info;
   // file for our router private keys
   char * router_keys;
-  // file for floodfill boostrap
-  char * floodfill;
-  // url for reseed
-  char * reseed;
+  // file for floodfill boostrap, don't free
+  const char * floodfill;
+  // url for reseed, don't free
+  const char * reseed;
+
+  // ipv4 addr/port
+  char * external_addr4;
+  char * external_port4;
+  // ipv6 addr/port
+  char * external_addr6;
+  char * external_port6;
   
   // network database storage
   struct i2p_netdb * netdb;  
   // transport layer
   struct i2np_transport * transport;
+  // tunnel routing context
+  struct i2np_tunnel_context * tunnels;
   // ntcp server
   struct ntcp_server * ntcp;
+  // our router identity private keys
+  struct i2p_identity_keys * privkeys;
+  // our router info
+  struct router_info * our_ri;
+  // our ident hash
+  ident_hash ident;
 };
 
 #endif

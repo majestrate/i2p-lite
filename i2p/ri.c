@@ -21,6 +21,7 @@ struct router_info
   uint8_t num_addresses;
   struct i2p_addr ** addresses;
   
+  char * caps;
 };
 
 void router_info_new(struct router_info ** ri)
@@ -35,12 +36,16 @@ void router_info_free(struct router_info ** ri)
   while(n--)
     i2p_addr_free(&(*ri)->addresses[n]);
   free((*ri)->data);
+  free((*ri)->caps);
   free(*ri);
 }
 
 void router_info_process_props(char * k, char * v, void * u)
 {
-  // TODO(psi): implement
+  struct router_info * ri = (struct router_info *) u;
+  
+  if(!strcmp(k, "caps")) ri->caps = strdup(v);
+  
 }
 
 int router_info_load(struct router_info * ri, int fd)
@@ -72,11 +77,12 @@ int router_info_load(struct router_info * ri, int fd)
     ri->len = 0;
     i2p_error(LOG_DATA, "failed to load router info, short read");
   }
-  if(( d = i2p_identity_read(&ri->identity, ri->data, ri->len))) {
+  i2p_identity_new(&ri->identity);
+  if(( d = i2p_identity_read_buffer(ri->identity, ri->data, ri->len))) {
     if (i2p_identity_sigtype(ri->identity)) 
       ret = router_info_verify(ri);
     else // dsa not supported
-      ret = 0;
+      return 0;
     if(ret) {
       // parse internal members
       // read timestamp
@@ -97,7 +103,7 @@ int router_info_load(struct router_info * ri, int fd)
       }
       // peers
       uint8_t numPeers = *d;
-      // TODO(psi): don't skip peers
+      // skip peers
       d += numPeers * 32 + 1;
       // read properties
       d = read_i2pdict(d, d - ri->data, router_info_process_props, ri);
@@ -147,4 +153,23 @@ char * router_info_base64_ident(struct router_info * ri)
 void router_info_hash(struct router_info * ri, ident_hash * ident)
 {
   i2p_identity_hash(ri->identity, ident);
+}
+
+int router_info_is_floodfill(struct router_info * ri)
+{
+  int ret = 0;
+  if(ri->caps) {
+    char * cap = ri->caps;
+    while(*cap) {
+      if(*cap == 'f') ret = 1;
+      cap++;
+    }
+  }
+  return ret;
+}
+
+void router_info_get_caps(struct router_info * ri, char ** caps)
+{
+  if(ri->caps) *caps = strdup(ri->caps);
+  else *caps = NULL;
 }

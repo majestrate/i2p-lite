@@ -55,4 +55,7 @@ int netdb_hashmap_remove(struct netdb_hashmap *map, ident_hash key);
 /** @brief iterate over every item in hashmap */
 void netdb_hashmap_for_each(struct netdb_hashmap *map, netdb_iterator i, void * u);
 
+/** @brief return how many router infos we have loaded */
+size_t netdb_hashmap_size(struct netdb_hashmap * map);
+
 #endif

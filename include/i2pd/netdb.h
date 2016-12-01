@@ -4,8 +4,14 @@
 #include <i2pd/datatypes.h>
 #include <i2pd/ri.h>
 #include <i2pd/types.h>
+#include <i2pd/i2np.h>
 
 #define I2P_CONFIG_NETDB_DIR "i2p.netdb.dir"
+
+#ifndef NETDB_MIN_PEERS
+// minimum number of routers we need for network to work
+#define NETDB_MIN_PEERS 20
+#endif
 
 struct i2p_netdb;
 
@@ -36,10 +42,15 @@ int i2p_netdb_ensure_skiplist(struct i2p_netdb * db);
 /** @brief load all netdb entries on disk into memory */
 int i2p_netdb_load_all(struct i2p_netdb * db);
 
+/** @brief return how many peers we have loaded in memory */
+size_t i2p_netdb_loaded_peer_count(struct i2p_netdb * db);
+
 /** @brief netdb iterator type */
 typedef void(*netdb_iterator)(ident_hash k, struct router_info * v, void *);
 
-/** @brief iterate over all entries in netdb */
+/** @brief iterate over all entries in netdb memory */
 void i2p_netdb_for_each(struct i2p_netdb * db, netdb_iterator i, void * user);
+
+struct i2np_message_router * i2p_netdb_message_router(struct i2p_netdb * db);
 
 #endif
