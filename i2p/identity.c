@@ -30,12 +30,30 @@ int i2p_identity_read(struct i2p_identity * i, int fd)
   eddsa_pubkey ed_pub = {0};
   if(read(fd, elg_pub, sizeof(elg_key)) != sizeof(elg_key)) {
     // bad read
+    i2p_error(LOG_DATA, "i2p identity read elg key failed");
     return 0;
   }
   if(read(fd, dsa_pub, sizeof(dsa_pubkey)) != sizeof(dsa_pubkey)) {
     // bad read
+    i2p_error(LOG_DATA, "i2p identity read dsa key failed");
     return 0;
   }
+  if(i->cert) i2p_cert_free(&i->cert); // free existing if it's there
+  i2p_cert_new(&i->cert);
+  int ret = i2p_cert_read(i->cert, fd);
+  if(ret) {
+    elg_Encryption_new(&i->elg, &elg_pub);
+    uint16_t sigtype = i2p_identity_sigtype(i);
+    if(sigtype == SIGNING_KEY_TYPE_EDDSA_SHA512_ED25519) {
+      memcpy(ed_pub, dsa_pub+96, sizeof(eddsa_pubkey));
+      eddsa_Verify_new(&i->eddsa, &ed_pub);
+    } else if (sigtype == SIGNING_KEY_TYPE_DSA_SHA1) {
+      dsa_Verify_new(&i->dsa, &dsa_pub);
+    } else {
+      i2p_error(LOG_DATA, "i2p identity has unsupported signing key type: %d", sigtype);
+    }
+  }
+  return ret;
 }
 
 uint8_t * i2p_identity_read_buffer(struct i2p_identity * i, uint8_t * in, size_t len)
@@ -46,6 +64,7 @@ uint8_t * i2p_identity_read_buffer(struct i2p_identity * i, uint8_t * in, size_t
   eddsa_pubkey ed_pub = {0};
   if(len < (3 + sizeof(elg_key) + sizeof(dsa_pubkey))) {
     // too small
+    i2p_error(LOG_DATA, "i2p identity buffer too small: %d", len);
     return NULL;
   }
   memcpy(elg_pub, in, sizeof(elg_key));
@@ -57,13 +76,13 @@ uint8_t * i2p_identity_read_buffer(struct i2p_identity * i, uint8_t * in, size_t
   uint16_t sigtype = i2p_identity_sigtype(i);
   if(sigtype == SIGNING_KEY_TYPE_EDDSA_SHA512_ED25519) {
     memcpy(ed_pub, dsa_pub+96, sizeof(eddsa_pubkey));
-    eddsa_Verify_new(&i->eddsa, ed_pub);
+    eddsa_Verify_new(&i->eddsa, &ed_pub);
   } else if (sigtype == SIGNING_KEY_TYPE_DSA_SHA1) {
-    dsa_Verify_new(&i->dsa, dsa_pub);
+    dsa_Verify_new(&i->dsa, &dsa_pub);
   }
-  elg_Encryption_new(&i->elg, elg_pub);
+  elg_Encryption_new(&i->elg, &elg_pub);
   // calculate ident hash
-  SHA256(i->ident, in - begin, begin);
+  SHA256(begin, in - begin, i->ident);
   return in;
 }
 
@@ -106,11 +125,12 @@ int i2p_identity_verify_data(struct i2p_identity * i, uint8_t * data, size_t inl
   case SIGNING_KEY_TYPE_DSA_SHA1:
     memcpy(d_sig, sig, sizeof(d_sig));
     i2p_debug(LOG_DATA, "check DSA signature for identity, size %lu", inlen);
-    valid = dsa_verify_signature(i->dsa, data, inlen, d_sig);
+    valid = dsa_verify_signature(i->dsa, data, inlen, &d_sig);
     break;
   case SIGNING_KEY_TYPE_EDDSA_SHA512_ED25519:
     i2p_debug(LOG_DATA, "check EdDSA signature for identity, size %lu", inlen);
-    valid = eddsa_verify_signature(i->eddsa, data, inlen, ed_sig);
+    memcpy(ed_sig, sig, sizeof(eddsa_sig));
+    valid = eddsa_verify_signature(i->eddsa, data, inlen, &ed_sig);
     break;
   default:
     i2p_error(LOG_DATA, "invalid identity signature type: %du", t);
@@ -165,8 +185,8 @@ int i2p_identity_keys_generate(struct i2p_identity_keys * k, uint16_t sigtype)
   if(k->ident) i2p_identity_free(&k->ident);
   i2p_identity_new(&k->ident);
   // create inner members
-  elg_Encryption_new(&k->ident->elg, elg_pub);
-  eddsa_Verify_new(&k->ident->eddsa, ed_pub);
+  elg_Encryption_new(&k->ident->elg, &elg_pub);
+  eddsa_Verify_new(&k->ident->eddsa, &ed_pub);
   // init certificate data
   uint8_t cert[4] = {0};
   htobe16buf(cert, sigtype);
@@ -200,16 +220,17 @@ int i2p_identity_keys_read(struct i2p_identity_keys * k, int fd)
       // bad read
       return 0;
     }
-    eddsa_Sign_new(&k->eddsa, ed_priv);
+    eddsa_Sign_new(&k->eddsa, &ed_priv);
   } else if(sigtype == SIGNING_KEY_TYPE_DSA_SHA1) {
     if(read(fd, dsa_priv, sizeof(dsa_privkey)) != sizeof(dsa_privkey)) {
       i2p_identity_free(&k->ident);
       // bad read
       return 0;
     }
-    dsa_Sign_new(&k->dsa, dsa_priv);
+    dsa_Sign_new(&k->dsa, &dsa_priv);
   } else {
     // unknown signing key type
+    i2p_error(LOG_DATA, "i2p router keys unsuportted signing key type: %d", sigtype);
     i2p_identity_free(&k->ident);
     return 0;
   }

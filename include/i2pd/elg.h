@@ -31,7 +31,7 @@ int elg_DH_alloc(struct elg_DH ** k);
 void elg_DH_generate(struct elg_DH * k, elg_key * priv, elg_key * pub);
 
 /** @brief agree on a shared key */
-void elg_DH_agree(struct elg_DH * k, elg_key pub, dh_shared_key * shared);
+void elg_DH_agree(struct elg_DH * k, elg_key * pub, dh_shared_key * shared);
 
 /** @brief generate new elgamal keypair */
 void elg_keygen(elg_key * priv, elg_key * pub);
@@ -42,7 +42,7 @@ struct elg_Encryption;
 /** @brief free previously allocated elg encryption context */
 void elg_Encryption_free(struct elg_Encryption ** e);
 /** @brief allocate new elg encryption context, copies key data */
-void elg_Encryption_new(struct elg_Encryption ** e, elg_key pub);
+void elg_Encryption_new(struct elg_Encryption ** e, elg_key * pub);
 
 /** @brief set a pointer to internal public key data */
 void elg_Encryption_get_key(struct elg_Encryption * e, uint8_t ** data);
@@ -51,7 +51,7 @@ void elg_Encryption_get_key(struct elg_Encryption * e, uint8_t ** data);
 void elg_Encrypt(struct elg_Encryption * e, elg_block * block, int zeroPad);
 
 /** @brief do elg decryption on a block */
-int elg_Decrypt(elg_key priv, elg_block * block, int zeroPad);
+int elg_Decrypt(elg_key * priv, elg_block * block, int zeroPad);
 
 #endif
 

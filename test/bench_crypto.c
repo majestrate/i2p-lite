@@ -18,12 +18,12 @@ static void benchmark_dsa(size_t n)
   
   dsa_keygen(&priv, &pub);
   
-  dsa_Sign_new(&s, priv);
-  dsa_Verify_new(&v, pub);
+  dsa_Sign_new(&s, &priv);
+  dsa_Verify_new(&v, &pub);
   
     while(n--) {
       dsa_sign_data(s, data, sizeof(data), &sig);
-      if(!dsa_verify_signature(v, data, sizeof(data), sig))
+      if(!dsa_verify_signature(v, data, sizeof(data), &sig))
         fails ++;
     }
     
@@ -45,11 +45,11 @@ static void benchmark_elg(size_t n)
 
   struct elg_Encryption * enc;
 
-  elg_Encryption_new(&enc, pub);
+  elg_Encryption_new(&enc, &pub);
   
   while(n--) {
     elg_Encrypt(enc, &block, 0);
-    if(!elg_Decrypt(priv, &block, 0))
+    if(!elg_Decrypt(&priv, &block, 0))
       fails ++;
   }
 
@@ -69,13 +69,13 @@ static void benchmark_eddsa(size_t n)
   struct eddsa_Sign * s;
   struct eddsa_Verify * v;
 
-  eddsa_Verify_new(&v, pub);
-  eddsa_Sign_new(&s, priv);
+  eddsa_Verify_new(&v, &pub);
+  eddsa_Sign_new(&s, &priv);
 
   while(n--) {
     RAND_bytes(data, sizeof(data));
     eddsa_sign_data(s, data, sizeof(data), &sig);
-    if (!eddsa_verify_signature(v, data, sizeof(data), sig))
+    if (!eddsa_verify_signature(v, data, sizeof(data), &sig))
       fails ++;
   }
   

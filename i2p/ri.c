@@ -77,13 +77,10 @@ int router_info_load(struct router_info * ri, int fd)
     ri->len = 0;
     i2p_error(LOG_DATA, "failed to load router info, short read");
   }
+  d = ri->data;
   i2p_identity_new(&ri->identity);
-  if(( d = i2p_identity_read_buffer(ri->identity, ri->data, ri->len))) {
-    if (i2p_identity_sigtype(ri->identity)) 
-      ret = router_info_verify(ri);
-    else // dsa not supported
-      return 0;
-    if(ret) {
+  if(( d = i2p_identity_read_buffer(ri->identity, d, ri->len))) {
+    if (router_info_verify(ri)) {
       // parse internal members
       // read timestamp
       ri->timestamp = bufbe64toh(d);
@@ -103,12 +100,15 @@ int router_info_load(struct router_info * ri, int fd)
       }
       // peers
       uint8_t numPeers = *d;
+      d ++;
       // skip peers
-      d += numPeers * 32 + 1;
+      d += numPeers * 32;
       // read properties
       d = read_i2pdict(d, d - ri->data, router_info_process_props, ri);
     } else {
-      i2p_error(LOG_DATA, "router info has invalid siganture");
+      char * ident = router_info_base64_ident(ri);
+      i2p_error(LOG_DATA, "router info %s has invalid siganture", ident);
+      free(ident);
     }
   } else {
     i2p_error(LOG_DATA, "failed to read identity for router info of size %lu", ri->len);
@@ -121,6 +121,7 @@ int router_info_load(struct router_info * ri, int fd)
 int router_info_verify(struct router_info * ri)
 {
   int l = ri->len - i2p_identity_siglen(ri->identity);
+  if(!l) i2p_error(LOG_DATA, "i2p router info has length of size 0");
   return l > 0 && i2p_identity_verify_data(ri->identity, ri->data, l, ri->data + l);
 }
 

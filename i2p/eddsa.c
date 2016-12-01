@@ -15,10 +15,10 @@ struct eddsa_Sign {
 };
 
 
-void eddsa_Verify_new(struct eddsa_Verify ** v, eddsa_pubkey pub)
+void eddsa_Verify_new(struct eddsa_Verify ** v, eddsa_pubkey * pub)
 {
   *v = mallocx(sizeof(struct eddsa_Verify), MALLOCX_ZERO);
-  memcpy((*v)->k, pub, sizeof(eddsa_pubkey));
+  memcpy((*v)->k, *pub, sizeof(eddsa_pubkey));
 }
 
 void eddsa_Verify_free(struct eddsa_Verify ** v)
@@ -27,10 +27,10 @@ void eddsa_Verify_free(struct eddsa_Verify ** v)
   *v = NULL;
 }
 
-void eddsa_Sign_new(struct eddsa_Sign ** s, eddsa_privkey priv)
+void eddsa_Sign_new(struct eddsa_Sign ** s, eddsa_privkey * priv)
 {
   *s = mallocx(sizeof(struct eddsa_Sign), MALLOCX_ZERO);
-  memcpy((*s)->sk, priv, sizeof(eddsa_privkey));
+  memcpy((*s)->sk, *priv, sizeof(eddsa_privkey));
   ed25519_ref10_pubkey((*s)->pk, (*s)->sk);
 }
 
@@ -44,7 +44,7 @@ void eddsa_keygen(eddsa_privkey * priv, eddsa_pubkey * pub)
 {
   uint8_t k[32];
   RAND_bytes(k, 32);
-  SHA256(*priv, 32, k);
+  SHA256(k, 32, *priv);
   ed25519_ref10_pubkey(*pub, *priv);
 }
 
@@ -53,7 +53,7 @@ void eddsa_sign_data(struct eddsa_Sign * s, const uint8_t * data, const size_t l
   ed25519_ref10_sign(*sig, data, len, s->sk, s->pk);
 }
 
-int eddsa_verify_signature(struct eddsa_Verify * v, const uint8_t * data, const size_t len, eddsa_sig sig)
+int eddsa_verify_signature(struct eddsa_Verify * v, const uint8_t * data, const size_t len, eddsa_sig * sig)
 {
-  return ed25519_ref10_open(sig, data, len, v->k) == 0;
+  return ed25519_ref10_open(*sig, data, len, v->k) == 0;
 }

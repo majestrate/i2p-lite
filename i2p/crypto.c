@@ -168,13 +168,13 @@ static int elg_test()
 
   memcpy(block, "test", 5);
   
-  elg_Encryption_new(&e, pub);
+  elg_Encryption_new(&e, &pub);
 
   i2p_debug(LOG_CRYPTO, "test elg encrypt");
   elg_Encrypt(e, &block, 0);
 
   i2p_debug(LOG_CRYPTO, "test elg decrypt");
-  ret = elg_Decrypt(priv, &block, 0);
+  ret = elg_Decrypt(&priv, &block, 0);
 
   elg_Encryption_free(&e);
 
@@ -205,14 +205,14 @@ static int dsa_test()
   RAND_bytes(block, sizeof(block));
 
   // new signer 
-  dsa_Sign_new(&signer, priv);
+  dsa_Sign_new(&signer, &priv);
   // new verifier
-  dsa_Verify_new(&verifier, pub);
+  dsa_Verify_new(&verifier, &pub);
 
   // sign
   dsa_sign_data(signer, block, sizeof(block), &sig);
   // verify
-  ret = dsa_verify_signature(verifier, block, sizeof(block), sig);
+  ret = dsa_verify_signature(verifier, block, sizeof(block), &sig);
 
   // free
   dsa_Sign_free(&signer);
@@ -244,14 +244,14 @@ static int eddsa_test()
   eddsa_keygen(&priv, &pub);
 
 
-  eddsa_Sign_new(&s, priv);
-  eddsa_Verify_new(&v, pub);
+  eddsa_Sign_new(&s, &priv);
+  eddsa_Verify_new(&v, &pub);
   
   RAND_bytes(data, sizeof(data));
 
   eddsa_sign_data(s, data, sizeof(data), &sig);
 
-  ret = eddsa_verify_signature(v, data, sizeof(data), sig);
+  ret = eddsa_verify_signature(v, data, sizeof(data), &sig);
   
   eddsa_Sign_free(&s);
   eddsa_Verify_free(&v);
@@ -320,7 +320,7 @@ struct elg_Encryption
   BIGNUM * b1;
 };
 
-void elg_Encryption_new(struct elg_Encryption ** e, elg_key pub)
+void elg_Encryption_new(struct elg_Encryption ** e, elg_key * pub)
 {
   BIGNUM * k, * y;
   *e = mallocx(sizeof(struct elg_Encryption), MALLOCX_ZERO);
@@ -332,7 +332,7 @@ void elg_Encryption_new(struct elg_Encryption ** e, elg_key pub)
   
   BN_rand(k, 2048, -1, 1); // full exponent
   BN_mod_exp((*e)->a, cc->elgg, k, cc->elgp, (*e)->c);
-  BN_bin2bn(pub, 256, y);
+  BN_bin2bn(*pub, 256, y);
   BN_mod_exp((*e)->b1, y, k, cc->elgp, (*e)->c);
   BN_free(k);
   BN_free(y);
@@ -370,7 +370,7 @@ void elg_Encrypt(struct elg_Encryption * e, elg_block * block, int zeropad)
   BN_free(b);
 }
 
-int elg_Decrypt(elg_key priv, elg_block * block, int zeropad)
+int elg_Decrypt(elg_key * priv, elg_block * block, int zeropad)
 {
   int ret;
   BN_CTX * c;
@@ -386,7 +386,7 @@ int elg_Decrypt(elg_key priv, elg_block * block, int zeropad)
   a = BN_new();
   b = BN_new();
 
-  BN_bin2bn(priv, 256, x);
+  BN_bin2bn(*priv, 256, x);
   BN_sub(x, cc->elgp, x); BN_sub_word(x, 1); // x = elgp - x - 1
 
   e = (*block);
@@ -438,11 +438,11 @@ struct dsa_Sign
   DSA * d;
 };
 
-void dsa_Sign_new(struct dsa_Sign ** signer, dsa_privkey priv)
+void dsa_Sign_new(struct dsa_Sign ** signer, dsa_privkey * priv)
 {
   *signer = mallocx(sizeof(struct dsa_Sign), MALLOCX_ZERO);
   (*signer)->d = createDSA();
-  (*signer)->d->priv_key = BN_bin2bn(priv, DSA_PRIVKEY_LENGTH, NULL);
+  (*signer)->d->priv_key = BN_bin2bn(*priv, DSA_PRIVKEY_LENGTH, NULL);
 }
 
 void dsa_Sign_free(struct dsa_Sign ** signer)
@@ -468,11 +468,11 @@ struct dsa_Verify
   DSA * d;
 };
 
-void dsa_Verify_new(struct dsa_Verify ** v, dsa_pubkey pub)
+void dsa_Verify_new(struct dsa_Verify ** v, dsa_pubkey * pub)
 {
   *v = mallocx(sizeof(struct dsa_Sign), MALLOCX_ZERO);
   (*v)->d = createDSA();
-  (*v)->d->pub_key = BN_bin2bn(pub, DSA_PUBKEY_LENGTH, NULL);
+  (*v)->d->pub_key = BN_bin2bn(*pub, DSA_PUBKEY_LENGTH, NULL);
 }
 
 void dsa_Verify_free(struct dsa_Verify ** v)
@@ -483,14 +483,14 @@ void dsa_Verify_free(struct dsa_Verify ** v)
   *v = NULL;
 }
 
-int dsa_verify_signature(struct dsa_Verify * v, const uint8_t * data, const size_t len, dsa_signature sig)
+int dsa_verify_signature(struct dsa_Verify * v, const uint8_t * data, const size_t len, dsa_signature * sig)
 {
   int ret = 0;
   uint8_t digest[20] = {0};
   SHA1(data, len, digest);
   DSA_SIG * s = DSA_SIG_new();
-  s->r = BN_bin2bn(sig, DSA_SIG_LENGTH/2, NULL);
-  s->s = BN_bin2bn(sig + (DSA_SIG_LENGTH/2), DSA_SIG_LENGTH/2, NULL);
+  s->r = BN_bin2bn(*sig, DSA_SIG_LENGTH/2, NULL);
+  s->s = BN_bin2bn(*sig + (DSA_SIG_LENGTH/2), DSA_SIG_LENGTH/2, NULL);
   ret = DSA_do_verify(digest, 20, s, v->d) != -1;
   DSA_SIG_free(s);
   return ret;
