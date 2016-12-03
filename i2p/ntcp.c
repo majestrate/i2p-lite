@@ -9,9 +9,20 @@
 #include <assert.h>
 #include <uv.h>
 
-#define ntcp_router_context(s) ((struct router_context *)(s->serv.data))
+#define ntcp_router_context(s) (s->transport->router)
 #define ntcp_serv_uv_loop(s) ntcp_router_context(s)->loop
 #define ntcp_conn_uv_loop(c) ntcp_serv_uv_loop(c->server)
+
+
+#define NTCP_CONN_CONNECTING 0
+#define NTCP_CONN_SESSION_REQUEST 1
+#define NTCP_CONN_SESSION_CREATED 2
+#define NTCP_CONN_SESSION_CONFIRM_A 3
+#define NTCP_CONN_SESSION_CONFIRM_B 4
+#define NTCP_CONN_ESTABLISHED 5
+
+#define ntcp_conn_is_connected(c) (c->state != NTCP_CONN_CONNECTING)
+#define ntcp_conn_is_established(c) (c->state == NTCP_CONN_ESTABLISHED)
 
 void ntcp_config_new(struct ntcp_config ** c)
 {
@@ -36,6 +47,7 @@ struct ntcp_server_close_hook
 struct ntcp_server
 {
   uv_tcp_t serv;
+  struct router_context * router;
   struct ntcp_conn_hashmap * conns;
   int ipv4; // set to 1 if ipv4 capable otherwise 0
   int ipv6; // set to 1 if ipv6 capable otherwise 0
@@ -57,8 +69,6 @@ struct ntcp_conn_established_hook
 /** connect to outbound router via ntcp event */
 struct ntcp_conn_connect_event
 {
-  // underlying connection
-  struct ntcp_conn * conn;
   // dns resolver handle
   uv_getaddrinfo_t resolve;
   // uv connect handle
@@ -81,8 +91,8 @@ struct ntcp_conn
   /** current connection attempt */
   struct ntcp_conn_connect_event * connect;
   
-  /** set to 1 if established otherwise 0 */
-  int established;
+  /** establishment state 0 for disconected */
+  int state;
   /** connection handle, user data points to this ntcp_conn */
   uv_tcp_t conn;
   /** ntcp server this connection belongs to */
@@ -176,7 +186,9 @@ static void ntcp_conn_close_cb(uv_handle_t * h)
 /** write from write buffer to raw tcp connection, does not copy buf */
 static void ntcp_conn_raw_write(struct ntcp_conn * conn, uint8_t * buf, size_t sz)
 {
-  uv_write_t * w = xmalloc(sizeof(uv_write_t));  
+  uv_write_t * w = xmalloc(sizeof(uv_write_t));
+  w->data = conn;
+  
 }
 
 /** free connect event */
@@ -192,8 +204,7 @@ static void ntcp_free_connect_event(struct ntcp_conn_connect_event ** e)
 /** uv_work handler for generating session request */
 static void ntcp_conn_gen_session_request(uv_work_t * work)
 {
-  struct ntcp_conn_connect_event * ev = (struct ntcp_conn_connect_event *) work->data;
-  struct ntcp_conn * conn = ev->conn;
+  struct ntcp_conn * conn = (struct ntcp_conn *) work->data;
   // generate x, X
   elg_keygen(&conn->privx, &conn->pubx);
   memcpy(conn->writebuff, conn->pubx, sizeof(elg_key));
@@ -219,26 +230,29 @@ static void ntcp_conn_handle_raw_read(uv_stream_t * s, ssize_t nread, const uv_b
 static void ntcp_conn_after_gen_session_request(uv_work_t * work, int status)
 {
   char buf[1024] = {0};
-  struct ntcp_conn_connect_event * ev = (struct ntcp_conn_connect_event *) work->data;
+  struct ntcp_conn * conn = (struct ntcp_conn *) work->data;
   if(status) {
     snprintf(buf, sizeof(buf), "ntcp connection generate session request failed: %s", uv_strerror(status));
     char * msg = strdup(buf);
     // call hooks with fail
-    ntcp_conn_call_established_hooks(ev->conn, NULL, msg);
-    ntcp_free_connect_event(&ev);
+    uv_close((uv_handle_t*) &conn->conn, ntcp_conn_close_cb);
+    ntcp_conn_call_established_hooks(conn, NULL, msg);
+    ntcp_free_connect_event(&conn->connect);
     free(msg);
   } else {
     // send actual request
-    ntcp_conn_raw_write(ev->conn, ev->conn->writebuff, 288);
+    ntcp_conn_raw_write(conn, conn->writebuff, 288);
     // start reading data from remote
-    status = uv_read_start((uv_stream_t*)&ev->conn->conn, ntcp_conn_read_alloc_cb, ntcp_conn_handle_raw_read);
+    status = uv_read_start((uv_stream_t*)&conn->conn, ntcp_conn_read_alloc_cb, ntcp_conn_handle_raw_read);
     if (status) {
       snprintf(buf, sizeof(buf), "ntcp connection could not start reading: %s", uv_strerror(status));
       char * msg = strdup(buf);
       // call hooks with fail
-      ntcp_conn_call_established_hooks(ev->conn, NULL, msg);
-      ntcp_free_connect_event(&ev);
+      ntcp_conn_call_established_hooks(conn, NULL, msg);
+      ntcp_free_connect_event(&conn->connect);
       free(msg);
+      // close connection becuase libuv fail
+      uv_close((uv_handle_t *)&conn->conn, ntcp_conn_close_cb);
     }
   }
 }
@@ -247,29 +261,38 @@ static void ntcp_conn_after_gen_session_request(uv_work_t * work, int status)
 /** outbound connection callback from uv */
 static void ntcp_conn_outbound_connect_cb(uv_connect_t * req, int status)
 {
-  struct ntcp_conn_connect_event * ev = (struct ntcp_conn_connect_event *) req->data;
+  struct ntcp_conn * conn = (struct ntcp_conn *) req->data;
+  struct ntcp_conn_connect_event * ev = conn->connect;
   char buf[1024] = {0}; // for error message
   if(status) {
     // fail
     snprintf(buf, sizeof(buf), "failed to connect to %s:%s, %s", ev->host, ev->port, uv_strerror(status));
     char * msg = strdup(buf);
     // call hooks with fail
-    ntcp_conn_call_established_hooks(ev->conn, NULL, msg);
-    ntcp_free_connect_event(&ev);
+    ntcp_conn_call_established_hooks(conn, NULL, msg);
+    ntcp_free_connect_event(&conn->connect);
     free(msg);
   } else {
     // successfully connected, generate session request
     uv_work_t * work = xmalloc(sizeof(uv_work_t));
-    work->data = ev;
-    status = uv_queue_work(ntcp_conn_uv_loop(ev->conn), work, ntcp_conn_gen_session_request, ntcp_conn_after_gen_session_request);
+    work->data = conn;
+    status = uv_queue_work(ntcp_conn_uv_loop(conn), work, ntcp_conn_gen_session_request, ntcp_conn_after_gen_session_request);
     if(status) {
       // fail to queue work
-      snprintf(buf, sizeof(buf), "failed to queue ntcp session generation for %s:%s, %s", ev->host, ev->port, uv_strerror(status));
+      snprintf(buf, sizeof(buf), "failed to queue ntcp session generation for %s:%s, %s", conn->connect->host, conn->connect->port, uv_strerror(status));
       char * msg = strdup(buf);
       // call hooks with fail
-      ntcp_conn_call_established_hooks(ev->conn, NULL, msg);
-      ntcp_free_connect_event(&ev);
+      ntcp_conn_call_established_hooks(conn, NULL, msg);
+      ntcp_free_connect_event(&conn->connect);
       free(msg);
+      // close connection because of queue work fail
+      uv_close((uv_handle_t*)&conn->conn, ntcp_conn_close_cb);
+    } else {
+      // we connected fine and queued session request generate work fine
+      // free connect event, no longer required
+      ntcp_free_connect_event(&conn->connect);
+      // set state accordingly
+      conn->state = NTCP_CONN_SESSION_REQUEST;
     }
   }
 }
@@ -278,60 +301,62 @@ static void ntcp_conn_outbound_connect_cb(uv_connect_t * req, int status)
 static void ntcp_conn_handle_resolve(uv_getaddrinfo_t * req, int status, struct addrinfo * result)
 {
   char buf[1024] = {0}; // for error message
-  struct ntcp_conn_connect_event * ev = (struct ntcp_conn_connect_event *) req->data;
+  struct ntcp_conn * conn = (struct ntcp_conn *) req->data;
   if(status) {
     // resolve error
-    snprintf(buf, sizeof(buf), "could not resolve %s:%s, %s", ev->host, ev->port, uv_strerror(status));
+    snprintf(buf, sizeof(buf), "could not resolve %s:%s, %s", conn->connect->host, conn->connect->port, uv_strerror(status));
     char * msg = strdup(buf);
-    ntcp_conn_call_established_hooks(ev->conn, NULL, msg);
-    ntcp_free_connect_event(&ev);
+    ntcp_conn_call_established_hooks(conn, NULL, msg);
+    ntcp_free_connect_event(&conn->connect);
     free(msg);
   } else {
     // resolve success, populate connection addresses
     struct addrinfo * a = result;
     while(a) {
-      if(a->ai_family == AF_INET && ev->conn->server->ipv4) {
-        ev->conn->addr4 = xmalloc(sizeof(struct sockaddr_in));
-        memcpy(ev->conn->addr4, a->ai_addr, a->ai_addrlen);
-      } else if(a->ai_family == AF_INET6 && ev->conn->server->ipv6) {
-        ev->conn->addr6 = xmalloc(sizeof(struct sockaddr_in6));
-        memcpy(ev->conn->addr6, a->ai_addr, a->ai_addrlen);
+      if(a->ai_family == AF_INET && conn->server->ipv4 && !conn->addr4) {
+        conn->addr4 = xmalloc(sizeof(struct sockaddr_in));
+        memcpy(conn->addr4, a->ai_addr, a->ai_addrlen);
+      } else if(a->ai_family == AF_INET6 && conn->server->ipv6 && !conn->addr6) {
+        conn->addr6 = xmalloc(sizeof(struct sockaddr_in6));
+        memcpy(conn->addr6, a->ai_addr, a->ai_addrlen);
       }
       a = a->ai_next;
     }
 
     struct sockaddr * saddr = NULL;
-    if (ev->conn->server->prefer_v6) {
-      if(ev->conn->addr6)
-        saddr = (struct sockaddr *) ev->conn->addr6;
+    if (conn->server->prefer_v6) {
+      if(conn->addr6)
+        saddr = (struct sockaddr *) conn->addr6;
       else
-        saddr = (struct sockaddr *) ev->conn->addr4;
+        saddr = (struct sockaddr *) conn->addr4;
     } else {
-      if(ev->conn->addr4)
-        saddr = (struct sockaddr *) ev->conn->addr4;
+      if(conn->addr4)
+        saddr = (struct sockaddr *) conn->addr4;
       else
-        saddr = (struct sockaddr *) ev->conn->addr6;
+        saddr = (struct sockaddr *) conn->addr6;
     }
     
     if (saddr) {
       // resolve succses, initialize tcp handle for connection
-      uv_tcp_init(ntcp_conn_uv_loop(ev->conn), &ev->conn->conn);
+      uv_tcp_init(ntcp_conn_uv_loop(conn), &conn->conn);
       // try connecting
-      int r = uv_tcp_connect(&ev->connect, &ev->conn->conn, saddr, ntcp_conn_outbound_connect_cb);
-      if(r) {
+      status = uv_tcp_connect(&conn->connect->connect, &conn->conn, saddr, ntcp_conn_outbound_connect_cb);
+      if(status) {
         // libuv connect fail
-        snprintf(buf, sizeof(buf), "uv_connect failed: %s", uv_strerror(r));
+        snprintf(buf, sizeof(buf), "uv_connect failed: %s", uv_strerror(status));
         char * msg = strdup(buf);
-        ntcp_conn_call_established_hooks(ev->conn, NULL, msg);
-        ntcp_free_connect_event(&ev);
+        ntcp_conn_call_established_hooks(conn, NULL, msg);
+        ntcp_free_connect_event(&conn->connect);
         free(msg);
+      } else {
+        // TODO: start ntcp connect timeout timer here
       }
     } else {
       // no routable addresses found
-      snprintf(buf, sizeof(buf), "could not find any routable addresses to %s:%s", ev->host, ev->port);
+      snprintf(buf, sizeof(buf), "could not find any routable addresses to %s:%s", conn->connect->host, conn->connect->port);
       char * msg = strdup(buf);
-      ntcp_conn_call_established_hooks(ev->conn, NULL, msg);
-      ntcp_free_connect_event(&ev);
+      ntcp_conn_call_established_hooks(conn, NULL, msg);
+      ntcp_free_connect_event(&conn->connect);
       free(msg);
     }
   }
@@ -342,17 +367,17 @@ static void ntcp_conn_handle_resolve(uv_getaddrinfo_t * req, int status, struct 
 /** allocate new connect event and fill members */
 static void ntcp_new_connect_event(struct ntcp_conn_connect_event **e, struct ntcp_conn * conn, struct i2p_addr * addr)
 {
+  
   struct ntcp_conn_connect_event * ev = (struct ntcp_conn_connect_event *) xmalloc(sizeof(struct ntcp_conn_connect_event));
-  ev->conn = conn;
   ev->host = strdup(addr->host);
   ev->port = i2p_addr_port_str(addr);
-  ev->resolve.data = ev;
+  ev->resolve.data = conn;
   *e = ev;
 }
 
 static int ntcp_conn_try_connect(struct ntcp_conn * conn, struct i2p_addr * addr)
 {
-  if(conn->established) return 0; // we are already connected and have a session established
+  if(ntcp_conn_is_connected(conn)) return 0; // we are already connected
   if(conn->connect) {
     // get rid of any existing connect event
     ntcp_free_connect_event(&conn->connect);
@@ -378,15 +403,15 @@ void ntcp_server_free(struct ntcp_server ** s)
 
 void ntcp_server_configure(struct ntcp_server * s, struct ntcp_config c)
 {
-  // TODO: add settings here
+  // TODO: add settings here, i.e. binding to network interface etc
 }
 
 void ntcp_server_attach(struct ntcp_server * s, struct i2np_transport * t)
 {
   assert(uv_tcp_init(t->loop, &s->serv) != -1);
-  s->serv.data = t->router;
-  i2np_transport_register(t, &s->i2np_impl);
+  s->serv.data = s;
   s->transport = t;
+  i2np_transport_register(t, &s->i2np_impl);
 }
 
 void ntcp_server_detach(struct ntcp_server * s)
@@ -397,9 +422,8 @@ void ntcp_server_detach(struct ntcp_server * s)
 // called when ntcp server closes socket
 void ntcp_server_closed_callback(uv_handle_t * h)
 {
-  struct router_context * router = (struct router_context *) h->data;
+  struct ntcp_server * serv = (struct ntcp_server *) h->data;
   // call hooks
-  struct ntcp_server * serv = router->ntcp;
   struct ntcp_server_close_hook * hook = serv->close_hooks;
   struct ntcp_server_close_hook * cur = hook;
   while(cur) {
@@ -411,7 +435,8 @@ void ntcp_server_closed_callback(uv_handle_t * h)
     free(cur);
     cur = hook;
   }
-  ntcp_server_free(&router->ntcp);
+  // remove from router context
+  ntcp_server_free(&ntcp_router_context(serv)->ntcp);
 }
 
 void ntcp_server_close(struct ntcp_server * s)
@@ -445,10 +470,10 @@ void ntcp_server_obtain_conn_by_ident(struct ntcp_server * s, ident_hash h, ntcp
   struct ntcp_conn * conn = NULL;
   if(ntcp_conn_hashmap_get(s->conns, h, &conn)) {
     // connection exists
-    if (conn->established) 
-      hook(s, conn, NULL, u); // if not established then it's already in the process of being obtained
+    if (ntcp_conn_is_established(conn)) 
+      hook(s, conn, NULL, u); // we are already established
     else
-      ntcp_conn_add_established_hook(conn, hook, u); // add hook to be called after established
+      ntcp_conn_add_established_hook(conn, hook, u); // add hook to be called after established, we are still trying to connect
   } else {
     // connection not open
     struct router_info * remote = NULL;

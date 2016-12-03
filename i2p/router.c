@@ -240,16 +240,26 @@ void router_context_try_bootstrap_from_floodfill(struct router_context * ctx, st
 void router_context_try_reseed_from(struct router_context * ctx, const char * url)
 {
   if(!url) return;
+  i2p_info(LOG_ROUTER, "try reseeding from %s", url);
 }
 
 
 void router_context_run(struct router_context * ctx)
 {
+  // set up tunnel context
+  i2np_tunnel_context_new(&ctx->tunnels);
+  i2np_tunnel_context_attach(ctx->tunnels, ctx);
+
+  // set up exploritory tunnel pool
+  i2np_tunnel_pool_new(&ctx->exploritory_pool);
+  i2np_tunnel_context_attach(ctx->tunnels, ctx);
   
+  router_context_init_netdb(ctx);
 }
 
 void router_context_update_router_info(struct router_context * ctx, struct router_info_config * conf)
 {
+  
 }
 
 void router_info_config_new(struct router_info_config ** c)

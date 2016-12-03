@@ -35,6 +35,8 @@ struct router_context
   struct i2np_transport * transport;
   // tunnel routing context
   struct i2np_tunnel_context * tunnels;
+  // exploritory tunnel pool
+  struct i2np_tunnel_pool * exploritory_pool;
   // ntcp server
   struct ntcp_server * ntcp;
   // our router identity private keys

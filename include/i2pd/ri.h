@@ -3,6 +3,7 @@
 #include <i2pd/datatypes.h>
 #include <i2pd/address.h>
 #include <i2pd/identity.h>
+#include <i2pd/i2np.h>
 
 #include <stdint.h>
 
@@ -41,5 +42,7 @@ typedef void (*router_info_addr_iter)(struct router_info *, struct i2p_addr *, v
 /** @brief iterate over all this router info's provided addresses */
 void router_info_iter_addrs(struct router_info * ri, router_info_addr_iter i, void * u);
 
+/** @brief convert this router info into a database store message */
+void router_info_to_dsm(struct router_info * ri, struct i2np_msg ** msg);
 
 #endif

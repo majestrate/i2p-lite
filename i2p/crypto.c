@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <i2pd/aes.h>
 #include <i2pd/crypto.h>
 #include <i2pd/dsa.h>
 #include <i2pd/eddsa.h>
@@ -92,16 +93,23 @@ struct crypto_consts
 
   // RSA
   BIGNUM * rsae;
+
+  // set to 1 if aesni is dected on runtime
+  int aesni;
 };
 
+struct crypto_consts * crypto = NULL;
 
-struct crypto_consts * cc = NULL;
+int aesni_enabled()
+{
+  return crypto->aesni;
+}
 
 // create new dsa context with i2p primes
 DSA * createDSA()
 {
   DSA * dsa = DSA_new();
-  DSA_set0_pqg(dsa, BN_dup(cc->dsap), BN_dup(cc->dsaq), BN_dup(cc->dsag));
+  DSA_set0_pqg(dsa, BN_dup(crypto->dsap), BN_dup(crypto->dsaq), BN_dup(crypto->dsag));
   DSA_set0_key(dsa, NULL, NULL);
   return dsa;
 }
@@ -110,48 +118,48 @@ DSA * createDSA()
 // init i2p elg parameters
 static void i2p_elg_init()
 {
-  cc->elgp = BN_new();
-  BN_bin2bn(elgp_, 256, cc->elgp);
-  cc->elgg = BN_new();
-  BN_set_word(cc->elgg, elgg_);
+  crypto->elgp = BN_new();
+  BN_bin2bn(elgp_, 256, crypto->elgp);
+  crypto->elgg = BN_new();
+  BN_set_word(crypto->elgg, elgg_);
 }
 
 // deinit i2p elg parameters
 static void i2p_elg_deinit()
 {
-  BN_free(cc->elgp);
-  BN_free(cc->elgg);
+  BN_free(crypto->elgp);
+  BN_free(crypto->elgg);
 }
 
 
 // init dsa primes
 static void i2p_dsa_init()
 {
-  cc->dsap = BN_new();
-  cc->dsaq = BN_new();
-  cc->dsag = BN_new();
-  BN_bin2bn(dsap_, 128, cc->dsap);
-  BN_bin2bn(dsaq_, 20, cc->dsaq);
-  BN_bin2bn(dsag_, 128, cc->dsag);
+  crypto->dsap = BN_new();
+  crypto->dsaq = BN_new();
+  crypto->dsag = BN_new();
+  BN_bin2bn(dsap_, 128, crypto->dsap);
+  BN_bin2bn(dsaq_, 20, crypto->dsaq);
+  BN_bin2bn(dsag_, 128, crypto->dsag);
 }
 
 // deinit dsa primes
 static void i2p_dsa_deinit()
 {
-  BN_free(cc->dsap);
-  BN_free(cc->dsag);
-  BN_free(cc->dsaq);
+  BN_free(crypto->dsap);
+  BN_free(crypto->dsag);
+  BN_free(crypto->dsaq);
 }
 
 static void i2p_rsa_init()
 {
-  cc->rsae = BN_new();
-  BN_set_word(cc->rsae, rsae_);
+  crypto->rsae = BN_new();
+  BN_set_word(crypto->rsae, rsae_);
 }
 
 static void i2p_rsa_deinit()
 {
-  BN_free(cc->rsae);
+  BN_free(crypto->rsae);
 }
 
 static int elg_test()
@@ -263,10 +271,14 @@ int i2p_crypto_init(struct i2p_crypto_config cfg)
 {
   int ret = 1;
   SSL_library_init();
-  cc = mallocx(sizeof(struct crypto_consts), MALLOCX_ZERO);
+  crypto = xmalloc(sizeof(struct crypto_consts));
   i2p_elg_init();
   i2p_dsa_init();
   i2p_rsa_init();
+  if(detect_aesni()) {
+    i2p_info(LOG_CRYPTO, "AESNI is available");
+    crypto->aesni = cfg.aesni;
+  }
   if (cfg.sanity_check) {
     i2p_info(LOG_CRYPTO, "doing crypto sanity check");
     if(!elg_test()) {
@@ -296,7 +308,7 @@ void i2p_crypto_done()
   i2p_elg_deinit();
   i2p_dsa_deinit();
   i2p_rsa_deinit();
-  free(cc);
+  free(crypto);
 }
 
 void elg_keygen(elg_key * priv, elg_key * pub)
@@ -307,7 +319,7 @@ void elg_keygen(elg_key * priv, elg_key * pub)
   p = BN_new();
   BN_rand(p, 2048, -1, 1); // full exponent
   bn2buf(p, (*priv), 256);
-  BN_mod_exp(p, cc->elgg, p, cc->elgp, c);
+  BN_mod_exp(p, crypto->elgg, p, crypto->elgp, c);
   bn2buf(p, (*pub), 256);
   BN_free(p);
   BN_CTX_free(c);
@@ -331,9 +343,9 @@ void elg_Encryption_new(struct elg_Encryption ** e, elg_key * pub)
   (*e)->b1 = BN_new();
   
   BN_rand(k, 2048, -1, 1); // full exponent
-  BN_mod_exp((*e)->a, cc->elgg, k, cc->elgp, (*e)->c);
+  BN_mod_exp((*e)->a, crypto->elgg, k, crypto->elgp, (*e)->c);
   BN_bin2bn(*pub, 256, y);
-  BN_mod_exp((*e)->b1, y, k, cc->elgp, (*e)->c);
+  BN_mod_exp((*e)->b1, y, k, crypto->elgp, (*e)->c);
   BN_free(k);
   BN_free(y);
 }
@@ -358,7 +370,7 @@ void elg_Encrypt(struct elg_Encryption * e, elg_block * block, int zeropad)
   SHA256(m+33, ELG_DATA_SIZE, m+1);
   // calculate b = b1 * m mod p
   BN_bin2bn(m, 255, b);
-  BN_mod_mul(b, e->b1, b, cc->elgp, e->c);
+  BN_mod_mul(b, e->b1, b, crypto->elgp, e->c);
   elg_block_wipe(block);
   if(zeropad) {
     bn2buf(e->a, (*block+1), 256);
@@ -387,15 +399,15 @@ int elg_Decrypt(elg_key * priv, elg_block * block, int zeropad)
   b = BN_new();
 
   BN_bin2bn(*priv, 256, x);
-  BN_sub(x, cc->elgp, x); BN_sub_word(x, 1); // x = elgp - x - 1
+  BN_sub(x, crypto->elgp, x); BN_sub_word(x, 1); // x = elgp - x - 1
 
   e = (*block);
   BN_bin2bn (zeropad ? e + 1 : e, 256, a);
   BN_bin2bn (zeropad ? e + 258 : e + 256, 256, b);
 
   // m = b * (a ^ x mod p ) mod p
-  BN_mod_exp(x, a, x, cc->elgp, c);
-  BN_mod_mul(b, b, x, cc->elgp, c);
+  BN_mod_exp(x, a, x, crypto->elgp, c);
+  BN_mod_mul(b, b, x, crypto->elgp, c);
 
   bn2buf(b, m, 255);
 
