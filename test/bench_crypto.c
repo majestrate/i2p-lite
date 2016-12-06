@@ -97,7 +97,7 @@ int main(int argc, char * argv[])
   i2p_log_init();
 
   i2p_log_set_scope(LOG_ALL);
-  i2p_log_set_level(L_DEBUG);
+  i2p_log_set_level(L_INFO);
   i2p_info(LOG_MAIN, "start crypto benchmark");
   
   i2p_crypto_init(cc);
