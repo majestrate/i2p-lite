@@ -106,11 +106,21 @@ int aesni_enabled()
 }
 
 // create new dsa context with i2p primes
-DSA * createDSA()
+// set public key and private key if present
+DSA * createDSA(dsa_pubkey * pub, dsa_privkey * prv)
 {
   DSA * dsa = DSA_new();
-  DSA_set0_pqg(dsa, BN_dup(crypto->dsap), BN_dup(crypto->dsaq), BN_dup(crypto->dsag));
-  DSA_set0_key(dsa, NULL, NULL);
+  dsa->p = BN_dup(crypto->dsap);
+  dsa->q = BN_dup(crypto->dsaq);
+  dsa->g = BN_dup(crypto->dsag);
+  if(pub) {
+    dsa->pub_key = BN_new();
+    BN_bin2bn(*pub, sizeof(dsa_pubkey), dsa->pub_key);
+  }
+  if(prv) {
+    dsa->priv_key = BN_new();
+    BN_bin2bn(*prv, sizeof(dsa_privkey), dsa->priv_key);
+  }
   return dsa;
 }
 
@@ -203,8 +213,8 @@ static int dsa_test()
   dsa_pubkey pub = {0};
   dsa_privkey priv = {0};
 
-  struct dsa_Sign * signer;
-  struct dsa_Verify * verifier;
+  struct dsa_Sign * signer = NULL;
+  struct dsa_Verify * verifier = NULL;
   
   i2p_debug(LOG_CRYPTO, "test dsa keygen");
   dsa_keygen(&priv, &pub);
@@ -443,7 +453,7 @@ void elg_block_wipe(elg_block * block)
 
 void dsa_keygen(dsa_privkey * priv, dsa_pubkey * pub)
 {
-  DSA * d = createDSA();
+  DSA * d = createDSA(NULL, NULL);
 
   DSA_generate_key(d);
 
@@ -462,9 +472,8 @@ struct dsa_Sign
 void dsa_Sign_new(struct dsa_Sign ** signer, dsa_privkey * priv)
 {
   *signer = mallocx(sizeof(struct dsa_Sign), MALLOCX_ZERO);
-  (*signer)->d = createDSA();
   memcpy((*signer)->priv, *priv, sizeof(dsa_privkey));
-  (*signer)->d->priv_key = BN_bin2bn(*priv, DSA_PRIVKEY_LENGTH, NULL);
+  (*signer)->d = createDSA(NULL, &(*signer)->priv);
 }
 
 void dsa_Sign_free(struct dsa_Sign ** signer)
@@ -500,10 +509,9 @@ struct dsa_Verify
 
 void dsa_Verify_new(struct dsa_Verify ** v, dsa_pubkey * pub)
 {
-  *v = mallocx(sizeof(struct dsa_Sign), MALLOCX_ZERO);
-  (*v)->d = createDSA();
+  *v = xmalloc(sizeof(struct dsa_Verify));
   memcpy((*v)->pub, *pub, sizeof(dsa_pubkey));
-  (*v)->d->pub_key = BN_bin2bn((*v)->pub, DSA_PUBKEY_LENGTH, NULL);
+  (*v)->d = createDSA(&(*v)->pub, NULL);
 }
 
 void dsa_Verify_free(struct dsa_Verify ** v)
@@ -521,9 +529,9 @@ int dsa_verify_signature(struct dsa_Verify * v, const uint8_t * data, const size
   SHA1(data, len, digest);
   DSA_SIG * s = DSA_SIG_new();
   uint8_t * sb = *sig;
-  BN_bin2bn(sb, DSA_SIG_LENGTH/2, s->r);
+  s->r = BN_bin2bn(sb, DSA_SIG_LENGTH/2, NULL);
   sb += DSA_SIG_LENGTH / 2;
-  BN_bin2bn(sb, DSA_SIG_LENGTH/2, s->s);
+  s->s = BN_bin2bn(sb, DSA_SIG_LENGTH/2, NULL);
   ret = DSA_do_verify(digest, 20, s, v->d) != -1;
   DSA_SIG_free(s);
   return ret;

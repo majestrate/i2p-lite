@@ -7,8 +7,8 @@
 
 static void benchmark_dsa(size_t n)
 {
-  struct dsa_Sign * s;
-  struct dsa_Verify * v;
+  struct dsa_Sign * s = NULL;
+  struct dsa_Verify * v = NULL;
   dsa_signature sig = {0};
   uint8_t data [1024] = {0};
   size_t fails = 0;
@@ -97,7 +97,7 @@ int main(int argc, char * argv[])
   i2p_log_init();
 
   i2p_log_set_scope(LOG_ALL);
-  i2p_log_set_level(L_INFO);
+  i2p_log_set_level(L_DEBUG);
   i2p_info(LOG_MAIN, "start crypto benchmark");
   
   i2p_crypto_init(cc);
