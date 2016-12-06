@@ -19,7 +19,7 @@ struct i2np_tc_hashmap
 
 #define i2np_tc_hashnode_hash(tid) (tid % TC_BUCKETS)
 
-struct i2np_tc_hashnode * i2np_tc_hashnode_free(struct i2np_tc_hashnode * n)
+static struct i2np_tc_hashnode * i2np_tc_hashnode_free(struct i2np_tc_hashnode * n)
 {
   struct i2np_tc_hashnode * next = NULL;
   if(n) {
@@ -46,7 +46,7 @@ static void i2np_tc_hashmap_free(struct i2np_tc_hashmap ** h)
   *h = NULL;
 }
 
-int i2np_tc_hashmap_get(struct i2np_tc_hashmap * map, tunnel_id_t tid, struct i2np_tunnel ** tunnel)
+static int i2np_tc_hashmap_get(struct i2np_tc_hashmap * map, tunnel_id_t tid, struct i2np_tunnel ** tunnel)
 {
   *tunnel = NULL;
   size_t slot = i2np_tc_hashnode_hash(tid);
@@ -55,6 +55,33 @@ int i2np_tc_hashmap_get(struct i2np_tc_hashmap * map, tunnel_id_t tid, struct i2
     if(node->tid == tid) {
       *tunnel = node->tunnel;
       return 1;
+    }
+    node = node->next;
+  }
+  return 0;
+}
+
+static int i2np_tc_hashmap_put(struct i2np_tc_hashmap * map, tunnel_id_t tid, struct i2np_tunnel * tunnel)
+{
+  size_t slot = i2np_tc_hashnode_hash(tid);
+  struct i2np_tc_hashnode * node = &map->nodes[slot];
+  while(node->next) {
+    if(node->tid == tid) return 0; // we already have it
+    node = node->next;
+  }
+  node->next = xmalloc(sizeof(struct i2np_tc_hashnode));
+  node->next->tid = tid;
+  node->next->tunnel = tunnel;
+  return 1;
+}
+
+static int i2np_tc_hashmap_remove(struct i2np_tc_hashmap * map, tunnel_id_t tid)
+{
+  size_t slot = i2np_tc_hashnode_hash(tid);
+  struct i2np_tc_hashnode * node = map->nodes[slot].next;
+  while(node) {
+    if (node->tid == tid) {
+      
     }
     node = node->next;
   }
@@ -74,12 +101,13 @@ static void i2np_tunnel_context_dispatch(void * t, struct i2np_msg * msg, ident_
   
 }
 
-void i2np_tunnel_context_new(struct i2np_tunnel_context ** t)
+void i2np_tunnel_context_new(struct router_context * router, struct i2np_tunnel_context ** t)
 {
   *t = xmalloc(sizeof(struct i2np_tunnel_context));
   (*t)->i2np = xmalloc(sizeof(struct i2np_message_router));
   (*t)->i2np->impl = *t;
   (*t)->i2np->dispatch = i2np_tunnel_context_dispatch;
+  (*t)->router = router;
 }
 
 void i2np_tunnel_context_free(struct i2np_tunnel_context ** t)

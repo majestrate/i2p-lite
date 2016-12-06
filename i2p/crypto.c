@@ -330,6 +330,7 @@ struct elg_Encryption
   BN_CTX * c;
   BIGNUM * a;
   BIGNUM * b1;
+  elg_key pub;
 };
 
 void elg_Encryption_new(struct elg_Encryption ** e, elg_key * pub)
@@ -341,10 +342,12 @@ void elg_Encryption_new(struct elg_Encryption ** e, elg_key * pub)
   y = BN_new();
   (*e)->a = BN_new();
   (*e)->b1 = BN_new();
+  // copy public key
+  memcpy((*e)->pub, *pub, sizeof(elg_key));
   
   BN_rand(k, 2048, -1, 1); // full exponent
   BN_mod_exp((*e)->a, crypto->elgg, k, crypto->elgp, (*e)->c);
-  BN_bin2bn(*pub, 256, y);
+  BN_bin2bn((*e)->pub, 256, y);
   BN_mod_exp((*e)->b1, y, k, crypto->elgp, (*e)->c);
   BN_free(k);
   BN_free(y);
@@ -357,6 +360,11 @@ void elg_Encryption_free(struct elg_Encryption ** e)
   BN_CTX_free((*e)->c);
   free(*e);
   *e = NULL;
+}
+
+void elg_Encryption_get_key(struct elg_Encryption * e, uint8_t ** ptr)
+{
+  *ptr = e->pub;
 }
 
 void elg_Encrypt(struct elg_Encryption * e, elg_block * block, int zeropad)
@@ -448,12 +456,14 @@ void dsa_keygen(dsa_privkey * priv, dsa_pubkey * pub)
 struct dsa_Sign
 {
   DSA * d;
+  dsa_privkey priv;
 };
 
 void dsa_Sign_new(struct dsa_Sign ** signer, dsa_privkey * priv)
 {
   *signer = mallocx(sizeof(struct dsa_Sign), MALLOCX_ZERO);
   (*signer)->d = createDSA();
+  memcpy((*signer)->priv, *priv, sizeof(dsa_privkey));
   (*signer)->d->priv_key = BN_bin2bn(*priv, DSA_PRIVKEY_LENGTH, NULL);
 }
 
@@ -470,21 +480,30 @@ void dsa_sign_data(struct dsa_Sign * signer, const uint8_t * data, const size_t 
   uint8_t digest[20] = {0};
   SHA1(data, len, digest);
   DSA_SIG * s = DSA_do_sign(digest, 20, signer->d);
-  bn2buf(s->r, *sig, (DSA_SIG_LENGTH/2));
-  bn2buf(s->s, (*sig+ (DSA_SIG_LENGTH/2)), DSA_SIG_LENGTH/2);
+  uint8_t * sd = *sig;
+  bn2buf(s->r, sd, (DSA_SIG_LENGTH/2));
+  sd += DSA_SIG_LENGTH / 2;
+  bn2buf(s->s, sd, DSA_SIG_LENGTH/2);
   DSA_SIG_free(s);
+}
+
+void dsa_Sign_copy_key_data(struct dsa_Sign * s, dsa_privkey * k)
+{
+  memcpy(*k, s->priv, sizeof(dsa_privkey));
 }
 
 struct dsa_Verify
 {
   DSA * d;
+  dsa_pubkey pub;
 };
 
 void dsa_Verify_new(struct dsa_Verify ** v, dsa_pubkey * pub)
 {
   *v = mallocx(sizeof(struct dsa_Sign), MALLOCX_ZERO);
   (*v)->d = createDSA();
-  (*v)->d->pub_key = BN_bin2bn(*pub, DSA_PUBKEY_LENGTH, NULL);
+  memcpy((*v)->pub, *pub, sizeof(dsa_pubkey));
+  (*v)->d->pub_key = BN_bin2bn((*v)->pub, DSA_PUBKEY_LENGTH, NULL);
 }
 
 void dsa_Verify_free(struct dsa_Verify ** v)
@@ -501,10 +520,17 @@ int dsa_verify_signature(struct dsa_Verify * v, const uint8_t * data, const size
   uint8_t digest[20] = {0};
   SHA1(data, len, digest);
   DSA_SIG * s = DSA_SIG_new();
-  s->r = BN_bin2bn(*sig, DSA_SIG_LENGTH/2, NULL);
-  s->s = BN_bin2bn(*sig + (DSA_SIG_LENGTH/2), DSA_SIG_LENGTH/2, NULL);
+  uint8_t * sb = *sig;
+  BN_bin2bn(sb, DSA_SIG_LENGTH/2, s->r);
+  sb += DSA_SIG_LENGTH / 2;
+  BN_bin2bn(sb, DSA_SIG_LENGTH/2, s->s);
   ret = DSA_do_verify(digest, 20, s, v->d) != -1;
   DSA_SIG_free(s);
   return ret;
+}
+
+void dsa_Verify_get_key(struct dsa_Verify * v, uint8_t ** k)
+{
+  *k = v->pub;
 }
 

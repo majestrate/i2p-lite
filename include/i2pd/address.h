@@ -1,17 +1,19 @@
 #ifndef I2PD_ADDRESS_H_
 #define I2PD_ADDRESS_H_
 #include <i2pd/types.h>
+#include <i2pd/aes.h>
 #include <unistd.h>
 
 /** @brief network address */
 struct i2p_addr
 {
-  // what transport type (unused when binding)
   char * style;
   char * host;
   uint16_t port;
   uint8_t cost;
   uint64_t date;
+  // for ssu
+  aes_key key;
 };
 
 /** @brief read i2p addr from memory */

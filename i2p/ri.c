@@ -4,6 +4,8 @@
 #include <i2pd/identity.h>
 #include <i2pd/memory.h>
 #include <i2pd/log.h>
+#include <i2pd/ntcp.h>
+#include <i2pd/ssu.h>
 #include <i2pd/util.h>
 #include <openssl/sha.h>
 
@@ -125,6 +127,31 @@ int router_info_verify(struct router_info * ri)
   return l > 0 && i2p_identity_verify_data(ri->identity, ri->data, l, ri->data + l);
 }
 
+void router_info_generate(struct i2p_identity_keys * k, struct router_info_config * config, struct router_info ** info)
+{
+  router_info_new(info);
+  i2p_identity_keys_to_public(k, &(*info)->identity);
+  if(config->caps)
+    (*info)->caps = strdup(config->caps);
+
+  if(config->ntcp) {
+    struct i2p_addr * addr = NULL;
+    ntcp_config_to_address(config->ntcp, &addr);
+    if(addr) {
+      (*info)->addresses[(*info)->num_addresses] = addr;
+      (*info)->num_addresses += 1;
+    }
+  }
+  if(config->ssu) {
+    struct i2p_addr * addr = NULL;
+    ssu_config_to_address(config->ssu, &addr);
+    if(addr) {
+      (*info)->addresses[(*info)->num_addresses] = addr;
+      (*info)->num_addresses += 1;
+    }
+  } 
+}
+
 int router_info_write(struct router_info * ri, int fd)
 {
   if(!ri->len) return 0; // empty
@@ -173,4 +200,23 @@ void router_info_get_caps(struct router_info * ri, char ** caps)
 {
   if(ri->caps) *caps = strdup(ri->caps);
   else *caps = NULL;
+}
+
+void router_info_get_identity(struct router_info * ri, struct i2p_identity ** ident)
+{
+  *ident = ri->identity;
+}
+
+void router_info_config_new(struct router_info_config ** c)
+{
+  *c = xmalloc(sizeof(struct router_info_config));
+}
+
+void router_info_config_free(struct router_info_config ** c)
+{
+  if((*c)->ntcp) ntcp_config_free(&(*c)->ntcp);
+  if((*c)->ssu) ssu_config_free(&(*c)->ssu);
+  free((*c)->caps);
+  free(*c);
+  *c = NULL;
 }

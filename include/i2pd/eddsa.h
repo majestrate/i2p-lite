@@ -32,6 +32,6 @@ void eddsa_Sign_free(struct eddsa_Sign ** s);
 void eddsa_sign_data(struct eddsa_Sign *s, const uint8_t * data, const size_t len, eddsa_sig * sig);
 
 /** @brief copy private key inside this signer into buffer */
-void eddsa_copy_key_data(struct eddsa_Sign * s, eddsa_privkey * k);
+void eddsa_Sign_copy_key_data(struct eddsa_Sign * s, eddsa_privkey * k);
 
 #endif

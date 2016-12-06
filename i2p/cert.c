@@ -29,16 +29,21 @@ int i2p_cert_read(struct i2p_cert * c, int fd)
     // read error
     return 0;
   }
-  c->len = bufbe16toh(b+1);
-  c->data = xmalloc(c->len + 3);
+  c->len = bufbe16toh(b+1) + 3;
+  c->data = xmalloc(c->len);
   memcpy(c->data, b, 3);
   if(c->len) {
-    if(read(fd, c->data + 3, c->len) != c->len) {
+    if(read(fd, c->data + 3, c->len - 3) != c->len) {
       // read error
       return 0;
     }
   }
   return 1;
+}
+
+int i2p_cert_write(struct i2p_cert * c, int fd)
+{
+  return write(fd, c->data, c->len) != -1;
 }
 
 uint8_t * i2p_cert_read_buffer(struct i2p_cert * c, uint8_t * d, size_t len)

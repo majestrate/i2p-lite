@@ -1,4 +1,5 @@
 #include <i2pd/address.h>
+#include <i2pd/encoding.h>
 #include <i2pd/log.h>
 #include <i2pd/memory.h>
 #include <i2pd/util.h>
@@ -17,6 +18,16 @@ void i2p_addr_process_dict(char * k, char * v, void * u)
   }
   if(!strcmp(k, "port")) {
     a->port = htons(atoi(v));
+    return;
+  }
+  if(!strcmp(k, "key")) {
+    // for ssu
+    uint8_t * key = NULL;
+    size_t len = i2p_base64_decode_str(v, &key);
+    if (len == sizeof(aes_key)) {
+      memcpy(a->key, key, len);
+    }
+    free(key);
   }
 }
 

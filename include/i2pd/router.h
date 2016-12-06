@@ -9,22 +9,6 @@
 
 #define I2P_CONFIG_ROUTER_DIR "i2p.router.dir"
 
-/** @brief parameters for initializing a router info in router context */
-struct router_info_config
-{
-  /** ntcp address info */
-  struct ntcp_config * ntcp;
-  /** ssu address info */
-  struct ssu_configs * ssu;
-  /** router caps, i.e. ORfX */
-  char * caps;
-  /** set to 1 if we should publish to netdb, otherwise set to 0 in which we won't publish to the network */
-  int publish;
-};
-
-void router_info_config_new(struct router_info_config ** cfg);
-void router_info_config_free(struct router_info_config ** cfg);
-
 /** @brief parameters for initializing a router context */
 struct router_context_config
 {
@@ -68,6 +52,8 @@ void router_context_update_router_info(struct router_context * ctx, struct route
 
 /** @brief try bootstrapping from floodfill */
 void router_context_try_bootstrap_from_floodfill(struct router_context * ctx, struct router_info * ri);
+
+void router_context_get_identity(struct router_context * ctx, struct i2p_identity ** ident);
 
 /** @brief start reseed by url, if i2p domain and no peers this does nothing */
 void router_context_try_reseed_from(struct router_context * ctx, const char * url);

@@ -67,24 +67,19 @@ struct i2np_tunnel
 
 
 void i2np_tunnel_new(struct i2np_tunnel ** tunnel);
-void i2np_tunnel_free(struct i2np_tunnel ** tunnel);
-
-/** @brief get the status of this tunnel */
-uint8_t i2np_tunnel_status(struct i2np_tunnel * tunnel);
+void i2np_tunnel_free(struct i2np_tunnel ** tunnel);;
 
 struct i2np_tunnel_pool;
 
 /** @brief peer selection hook for tunnel pool */
 typedef int (*i2np_tunnel_pool_select_peers)(struct i2np_tunnel_pool*, struct i2p_netdb *, struct i2np_tunnel_config *, struct i2np_tunnel_config *);
 
-void i2np_tunnel_pool_new(struct i2np_tunnel_pool ** pool);
+/** @brief create new tunnel pool from tunnel context */
+void i2np_tunnel_pool_new(struct i2np_tunnel_context * ctx, struct i2np_tunnel_pool ** pool);
 void i2np_tunnel_pool_free(struct i2np_tunnel_pool ** pool);
 
 /** @brief set peer selection hook, must be called before starting */
 void i2np_tunnel_pool_set_peer_selector(i2np_tunnel_pool_select_peers inbound, i2np_tunnel_pool_select_peers outbound);
-
-/** @brief set i2np message handler for this tunnel pool, default handler does nothing */
-void i2np_tunnel_pool_set_message_router(struct i2np_tunnel_pool * pool, struct i2np_message_router * router);
 
 /** @brief run i2np tunnel pool, start building tunnel immediately */
 void i2np_tunnel_pool_start(struct i2np_tunnel_pool * pool);
@@ -100,10 +95,8 @@ void i2np_tunnel_pool_stop(struct i2np_tunnel_pool * pool);
 void i2np_tunnel_pool_select_next_outbound_tunnel(struct i2np_tunnel_pool * pool, struct i2np_tunnel ** t);
 
 
-void i2np_tunnel_context_new(struct i2np_tunnel_context ** ctx);
+void i2np_tunnel_context_new(struct router_context * router,  struct i2np_tunnel_context ** ctx);
 void i2np_tunnel_context_free(struct i2np_tunnel_context ** ctx);
-
-void i2np_tunnel_context_attach(struct i2np_tunnel_context * ctx, struct router_context * router);
 
 /** @brief get message router for handling inbound tunnel messages */
 struct i2np_message_router * i2np_tunnel_context_message_router(struct i2np_tunnel_context * ctx);

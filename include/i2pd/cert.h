@@ -20,6 +20,10 @@ void i2p_cert_init(struct i2p_cert * c, uint8_t type, uint8_t * data, uint16_t l
 
 /** @brief read from file descriptor */
 int i2p_cert_read(struct i2p_cert * c, int fd);
+
+/** @brief write to file descriptor */
+int i2p_cert_write(struct i2p_cert * c, int fd);
+
 /** @brief read from buffer */
 uint8_t * i2p_cert_read_buffer(struct i2p_cert * c, uint8_t * d, size_t len);
 

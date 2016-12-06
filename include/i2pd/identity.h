@@ -2,6 +2,7 @@
 #define I2PD_IDENTITY_H_
 #include <stdint.h>
 #include <unistd.h>
+#include <i2pd/elg.h>
 
 #define SIGNING_KEY_TYPE_DSA_SHA1 0
 #define SIGNING_KEY_TYPE_ECDSA_SHA256_P256 1
@@ -23,6 +24,9 @@ void i2p_identity_new(struct i2p_identity ** i);
 uint8_t * i2p_identity_read_buffer(struct i2p_identity * i, uint8_t * in, size_t len);
 /** @brief read i2p identity from file descriptor, returns 1 on success, otherwise returns 0 */
 int i2p_identity_read(struct i2p_identity * i, int fd);
+
+int i2p_identity_write(struct i2p_identity * i, int fd);
+
 void i2p_identity_free(struct i2p_identity ** i);
 
 size_t i2p_identity_size(struct i2p_identity * i);
@@ -31,6 +35,8 @@ size_t i2p_identity_siglen(struct i2p_identity * i);
 int i2p_identity_verify_data(struct i2p_identity * i, uint8_t * in, size_t inlen, uint8_t *sig);
 void i2p_identity_hash(struct i2p_identity * i, ident_hash * ident);
 uint16_t i2p_identity_sigtype(struct i2p_identity * i);
+
+void i2p_identity_get_elg_key(struct i2p_identity * i, elg_key * k);
 
 void i2p_identity_clone(struct i2p_identity * i, struct i2p_identity ** clone);
 

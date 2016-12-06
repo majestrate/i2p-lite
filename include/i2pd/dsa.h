@@ -33,4 +33,7 @@ void dsa_Sign_free(struct dsa_Sign **d);
 /** @brief sign data with dsa signer */
 void dsa_sign_data(struct dsa_Sign * d, const uint8_t * data, const size_t len, dsa_signature * sig);
 
+/** @brief copy private key data */
+void dsa_Sign_copy_key_data(struct dsa_Sign * d, dsa_privkey * priv);
+
 #endif

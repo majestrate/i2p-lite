@@ -5,11 +5,16 @@
 #include <i2pd/transport.h>
 #include <i2pd/tunnels.h>
 
+#define ROUTER_CONTEXT_TICK_INTERVAL 5000
+
 struct router_context
 {
 
   // mainloop
   uv_loop_t * loop;
+
+  // periodic event ticker
+  uv_timer_t ticker;
   
   // base directory for data
   char * data_dir;

@@ -1,4 +1,38 @@
 #include <i2pd/encoding.h>
+#include <i2pd/memory.h>
+#include <stdlib.h>
+
+// implementation lifted from i2pd
+
+size_t i2p_base64_encoding_buffer_size (size_t input_size) 
+{
+  div_t d = div (input_size, 3);
+  if (d.rem) d.quot++;
+  return 4*d.quot;
+}
+
+char * i2p_base64_encode_str(uint8_t * buf, size_t len)
+{
+  size_t outlen = i2p_base64_encoding_buffer_size(len);
+  char * str = xmalloc(outlen+1);
+  i2p_base64_encode(buf, len, str, outlen);
+  return str;
+}
+
+size_t i2p_base64_decode_str(char * in, uint8_t ** out)
+{
+  size_t inlen = strlen(in);
+  // TODO: buffer is uneedingly too big
+  uint8_t * temp = xmalloc(inlen);
+  size_t outlen = i2p_base64_decode(in, inlen, temp, inlen);
+  if (outlen) {
+    *out = temp;
+  } else {
+    free(temp);
+    *out = NULL;
+  }
+  return outlen;
+}
 
 static const char T32[32] = {
   'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
@@ -22,6 +56,77 @@ static const char T64[64] = {
 static char P64 = '='; 
 
 const char * I2P_BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-~";
+
+/*
+ * Reverse Substitution Table (built in run time)
+ */
+
+static char iT64[256];
+int isFirstTime = 1;
+
+static void iT64Build()
+{
+  int  i;
+  isFirstTime = 0;
+  for ( i=0; i<256; i++ ) iT64[i] = -1;
+  for ( i=0; i<64; i++ ) iT64[(int)T64[i]] = i;
+  iT64[(int)P64] = 0;
+}
+
+size_t                              /* Number of output bytes */
+i2p_base64_decode ( 
+  char * InBuffer,           /* BASE64 encoded buffer */
+  size_t    InCount,          /* Number of input bytes */
+  uint8_t  * OutBuffer,	/* output buffer length */ 	
+  size_t len)         	/* length of output buffer */
+	{
+		unsigned char * ps;
+		unsigned char * pd;
+		unsigned char   acc_1;
+		unsigned char   acc_2;
+		int             i; 
+		int             n; 
+		int             m; 
+		size_t outCount;
+
+		if (isFirstTime) iT64Build();
+		n = InCount/4;
+		m = InCount%4;
+		if (InCount && !m) 
+		     outCount = 3*n;
+		else {
+		     outCount = 0;
+		     return 0;
+		}
+		
+		ps = (unsigned char *)(InBuffer + InCount - 1);
+		while ( *ps-- == P64 ) outCount--;
+		ps = (unsigned char *)InBuffer;
+		
+		if (outCount > len) return -1;
+		pd = OutBuffer;
+		uint8_t * endOfOutBuffer = OutBuffer + outCount;		
+		for ( i = 0; i < n; i++ ){
+		     acc_1 = iT64[*ps++];
+		     acc_2 = iT64[*ps++];
+		     acc_1 <<= 2;
+		     acc_1 |= acc_2>>4;
+		     *pd++  = acc_1;
+			 if (pd >= endOfOutBuffer) break;
+
+		     acc_2 <<= 4;
+		     acc_1 = iT64[*ps++];
+		     acc_2 |= acc_1 >> 2;
+		     *pd++ = acc_2;
+			  if (pd >= endOfOutBuffer) break;	
+
+		     acc_2 = iT64[*ps++];
+		     acc_2 |= acc_1 << 6;
+		     *pd++ = acc_2;
+		}
+
+		return outCount;
+	}
 
 
 size_t                                /* Number of bytes in the encoded buffer */

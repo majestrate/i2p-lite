@@ -86,7 +86,18 @@ uint8_t * i2p_identity_read_buffer(struct i2p_identity * i, uint8_t * in, size_t
   return in;
 }
 
+int i2p_identity_write(struct i2p_identity * i, int fd)
+{
+  uint8_t * elg = NULL;
+  elg_Encryption_get_key(i->elg, &elg);
+  if(write(fd, elg, sizeof(elg_key)) == -1) return 0;
+  
+  uint8_t * dsa = NULL;
+  dsa_Verify_get_key(i->dsa, &dsa);
+  if(write(fd, dsa, sizeof(dsa_pubkey)) == -1) return 0;
 
+  return i2p_cert_write(i->cert, fd);
+}
 
 void i2p_identity_free(struct i2p_identity ** i)
 {
@@ -239,5 +250,45 @@ int i2p_identity_keys_read(struct i2p_identity_keys * k, int fd)
 
 int i2p_identity_keys_write(struct i2p_identity_keys * k, int fd)
 {
+
+  uint16_t sigtype = i2p_identity_sigtype(k->ident);
   
+  if(sigtype == SIGNING_KEY_TYPE_DSA_SHA1) {
+    
+    if(!i2p_identity_write(k->ident, fd)) return 0;
+    
+    if(write(fd, k->elg_priv, sizeof(elg_key)) == -1) return 0;
+    
+    dsa_privkey priv;
+    dsa_Sign_copy_key_data(k->dsa, &priv);
+    if(write(fd, priv, sizeof(dsa_privkey)) == -1) return 0;
+    
+  } else if (sigtype == SIGNING_KEY_TYPE_EDDSA_SHA512_ED25519) {
+    
+    if(!i2p_identity_write(k->ident, fd)) return 0;
+    
+    if(write(fd, k->elg_priv, sizeof(elg_key)) == -1) return 0;
+    
+    eddsa_privkey edpriv;
+    eddsa_Sign_copy_key_data(k->eddsa, &edpriv);
+    if(write(fd, edpriv, sizeof(eddsa_privkey)) == -1) return 0;
+  } else {
+    i2p_error(LOG_DATA, "invalid sigtype for identity keys %d", sigtype);
+    return 0;
+  }
+  return 1;
+}
+
+void i2p_identity_keys_to_public(struct i2p_identity_keys * k, struct i2p_identity ** pub)
+{
+  *pub = k->ident;
+}
+
+void i2p_identity_get_elg_key(struct i2p_identity * i, elg_key * k)
+{
+  uint8_t * ptr = NULL;
+  elg_Encryption_get_key(i->elg, &ptr);
+  if(ptr) {
+    memcpy(*k, ptr, sizeof(elg_key));
+  }
 }

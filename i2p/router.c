@@ -36,6 +36,10 @@ void router_context_new(struct router_context ** ctx, struct router_context_conf
 
   // attach ntcp to transports
   ntcp_server_attach((*ctx)->ntcp, (*ctx)->transport);
+
+  // initialize ticker
+  uv_timer_init((*ctx)->loop, &(*ctx)->ticker);
+  (*ctx)->ticker.data = *ctx;
 }
 
 void router_context_free(struct router_context ** ctx)
@@ -159,9 +163,11 @@ void router_context_close(struct router_context * ctx, router_context_close_hook
 {
   ntcp_server_detach(ctx->ntcp);
   ntcp_server_close(ctx->ntcp);
+  // stop event ticker
+  uv_timer_stop(&ctx->ticker);
 }
 
-static void router_context_init_netdb(struct router_context * ctx)
+static void router_context_ensure_min_peers(struct router_context * ctx)
 {
   size_t sz = i2p_netdb_loaded_peer_count(ctx->netdb);
   if(sz < NETDB_MIN_PEERS) {
@@ -243,35 +249,43 @@ void router_context_try_reseed_from(struct router_context * ctx, const char * ur
   i2p_info(LOG_ROUTER, "try reseeding from %s", url);
 }
 
+static void router_context_handle_tick(uv_timer_t * timer)
+{
+  struct router_context * ctx = (struct router_context * ) timer->data;
+  // make sure we have enough peers
+  router_context_ensure_min_peers(ctx);
+}
+
 
 void router_context_run(struct router_context * ctx)
 {
   // set up tunnel context
-  i2np_tunnel_context_new(&ctx->tunnels);
-  i2np_tunnel_context_attach(ctx->tunnels, ctx);
-
-  // set up exploritory tunnel pool
-  i2np_tunnel_pool_new(&ctx->exploritory_pool);
-  i2np_tunnel_context_attach(ctx->tunnels, ctx);
+  i2np_tunnel_context_new(ctx, &ctx->tunnels);
   
-  router_context_init_netdb(ctx);
+  // set up exploritory tunnel pool
+  i2np_tunnel_pool_new(ctx->tunnels, &ctx->exploritory_pool);
+
+  // start exploritory pool
+  i2np_tunnel_pool_start(ctx->exploritory_pool);
+
+  // start event ticker
+  uv_timer_start(&ctx->ticker, router_context_handle_tick, 0, ROUTER_CONTEXT_TICK_INTERVAL);
+
 }
 
 void router_context_update_router_info(struct router_context * ctx, struct router_info_config * conf)
 {
+  if(ctx->our_ri) router_info_free(&ctx->our_ri); // free any existing router info
+
+  router_info_generate(ctx->privkeys, conf, &ctx->our_ri); // generate router info and sign
   
-}
-
-void router_info_config_new(struct router_info_config ** c)
-{
-  *c = xmalloc(sizeof(struct router_info_config));
-}
-
-void router_info_config_free(struct router_info_config ** c)
-{
-  if((*c)->ntcp) ntcp_config_free(&(*c)->ntcp);
-  free((*c)->ssu);
-  free((*c)->caps);
-  free(*c);
-  *c = NULL;
+  int fd = open(ctx->router_info, O_WRONLY | O_CREAT);
+  if(fd == -1) {
+    // could not open file
+    i2p_error(LOG_ROUTER, "Failed to open %s, %s", ctx->router_info, strerror(errno));
+    return;
+  }
+  // write router info
+  router_info_write(ctx->our_ri, fd);
+  close(fd);
 }

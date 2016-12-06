@@ -9,7 +9,7 @@ int detect_aesni();
 
 /** @brief aes iv buffer */
 typedef uint8_t aes_iv[16];
-typedef uint8_t aes_key[16];
+typedef uint8_t aes_key[32];
 
 /** @brief aes ecrypt/decrypt implementation context */
 struct aes_key_impl;

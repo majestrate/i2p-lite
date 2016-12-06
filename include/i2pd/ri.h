@@ -4,8 +4,26 @@
 #include <i2pd/address.h>
 #include <i2pd/identity.h>
 #include <i2pd/i2np.h>
+#include <i2pd/elg.h>
 
 #include <stdint.h>
+
+/** @brief parameters for initializing a router info */
+struct router_info_config
+{
+  /** ntcp address info */
+  struct ntcp_config * ntcp;
+  /** ssu address info */
+  struct ssu_config * ssu;
+  /** router caps, i.e. ORfX */
+  char * caps;
+  /** set to 1 if we should publish to netdb, otherwise set to 0 in which we won't publish to the network */
+  int publish;
+};
+
+void router_info_config_new(struct router_info_config ** cfg);
+void router_info_config_free(struct router_info_config ** cfg);
+
 
 struct router_info;
 
@@ -17,6 +35,9 @@ int router_info_load(struct router_info * ri, int fd);
 
 /** @brief verify router info signature */
 int router_info_verify(struct router_info * ri);
+
+/** @brief generate a new router info and sign it */
+void router_info_generate(struct i2p_identity_keys * k, struct router_info_config * cfg, struct router_info ** ri);
 
 /** @brief return 1 if this router info is a floodfill, otherwise return 0 */
 int router_info_is_floodfill(struct router_info * ri);
@@ -44,5 +65,7 @@ void router_info_iter_addrs(struct router_info * ri, router_info_addr_iter i, vo
 
 /** @brief convert this router info into a database store message */
 void router_info_to_dsm(struct router_info * ri, struct i2np_msg ** msg);
+
+void router_info_get_identity(struct router_info * ri, struct i2p_identity ** ident);
 
 #endif

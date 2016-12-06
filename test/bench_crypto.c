@@ -92,7 +92,7 @@ int main(int argc, char * argv[])
   size_t rounds = 100;
   
   struct i2p_crypto_config cc;
-  cc.sanity_check = 0;
+  cc.sanity_check = 1;
   
   i2p_log_init();
 

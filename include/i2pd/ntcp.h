@@ -1,5 +1,6 @@
 #ifndef I2PD_NTCP_H_
 #define I2PD_NTCP_H_
+#include <i2pd/address.h>
 #include <i2pd/transport.h>
 #include <i2pd/types.h>
 
@@ -21,6 +22,8 @@ struct ntcp_config
 
 void ntcp_config_new(struct ntcp_config ** conf);
 void ntcp_config_free(struct ntcp_config ** conf);
+
+void ntcp_config_to_address(struct ntcp_config * conf, struct i2p_addr ** addr);
 
 #define default_ntcp_config { NULL, 1234, 1, 1 }
 

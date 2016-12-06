@@ -53,6 +53,11 @@ void eddsa_sign_data(struct eddsa_Sign * s, const uint8_t * data, const size_t l
   ed25519_ref10_sign(*sig, data, len, s->sk, s->pk);
 }
 
+void eddsa_Sign_copy_key_data(struct eddsa_Sign * s, eddsa_privkey * k)
+{
+  memcpy(*k, s->sk, sizeof(eddsa_privkey));
+}
+
 int eddsa_verify_signature(struct eddsa_Verify * v, const uint8_t * data, const size_t len, eddsa_sig * sig)
 {
   return ed25519_ref10_open(*sig, data, len, v->k) == 0;
