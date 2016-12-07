@@ -10,7 +10,7 @@ struct aes_key_impl
   AES_KEY openssl_key;
 };
 
-void aes_key_init(struct aes_key_impl ** k, aes_key * keydata)
+void aes_key_new(struct aes_key_impl ** k, aes_key * keydata)
 {
   *k = xmalloc(sizeof(struct aes_key_impl));
   if(aesni_enabled()) {
@@ -27,42 +27,44 @@ void aes_key_free(struct aes_key_impl ** k)
 }
 
 #if defined(__x86_64__) || defined(__SSE__)
-#define XOR_BLOCK(b, a) __asm__("movups	(%[buf]), %%xmm0 \nmovups	(%[other]), %%xmm1 \npxor %%xmm1, %%xmm0 \nmovups	%%xmm0, (%[buf]) \n": : [buf]"r"(a), [other]"r"(b) : "%xmm0", "%xmm1", "memory")
+#define XOR_BLOCK(a, b, c) __asm__("movups	(%[buf]), %%xmm0 \nmovups	(%[other]), %%xmm1 \npxor %%xmm1, %%xmm0 \nmovups	%%xmm0, (%[out]) \n": : [buf]"r"(c), [out]"r"(a),[other]"r"(b) : "%xmm0", "%xmm1", "memory")
 #else
-#define XOR_BLOCK(b, a) for(int _i=0; _i < 16; _i++) a[_i] ^= b[_i]
+#define XOR_BLOCK(a, b, c) for(int _i=0; _i < 16; _i++) a[_i] = b[_i] ^ c[_i]
 #endif
 
 
-static void tunnel_aes_encrypt(struct tunnel_AES * aes, tunnel_data_message * block)
+static void tunnel_aes_encrypt(struct tunnel_AES * aes, tunnel_data_message * data)
 {
-  uint8_t * iv = (*block) + 4; // block start + tunnelID
+  uint8_t * iv = (*data) + 4; // block start + tunnelID
   // encrypt IV
-  AES_ecb_encrypt(iv, iv, &aes->iv_key->openssl_key, AES_ENCRYPT);
-  uint8_t * data = iv ;
+  AES_encrypt(iv, iv, &aes->iv_key->openssl_key);
+  uint8_t buf[16] = {0};
+  uint8_t * prev_block = iv ;
   for (int i = 0; i < 64; i ++) {
-    uint8_t * next = data + 16;
-    XOR_BLOCK(data, next);
-    AES_ecb_encrypt(next, next, &aes->layer_key->openssl_key, AES_ENCRYPT);
-    data += 16;
+    uint8_t * block = prev_block + 16;
+    XOR_BLOCK(buf, prev_block, block);
+    AES_encrypt(buf, block, &aes->layer_key->openssl_key);
+    prev_block += 16;
   }
   // double encrypt IV
-  AES_ecb_encrypt(iv, iv, &aes->iv_key->openssl_key, AES_ENCRYPT);
+  AES_encrypt(iv, iv, &aes->iv_key->openssl_key);
 }
 
-static void tunnel_aes_decrypt(struct tunnel_AES * aes, tunnel_data_message * block)
+static void tunnel_aes_decrypt(struct tunnel_AES * aes, tunnel_data_message * data)
 {
-  uint8_t * iv = (*block) + 4; // block start + tunnelID
+  uint8_t * iv = (*data) + 4; // block start + tunnelID
   // decrypt iv
-  AES_ecb_encrypt(iv, iv, &aes->iv_key->openssl_key, AES_DECRYPT);
-  uint8_t * data = iv ;
+  AES_decrypt(iv, iv, &aes->iv_key->openssl_key);
+  uint8_t buf[16]= {0};
+  uint8_t * prev_block = iv ;
   for (int i = 0; i < 64; i ++) {
-    uint8_t * next = data + 16;
-    XOR_BLOCK(data, next);
-    AES_ecb_encrypt(next, next, &aes->layer_key->openssl_key, AES_DECRYPT);
-    data += 16;
+    uint8_t * block = prev_block + 16;
+    AES_decrypt(block, buf, &aes->layer_key->openssl_key);
+    XOR_BLOCK(buf, prev_block, block);
+    prev_block += 16;
   }
   // double decrypt IV
-  AES_ecb_encrypt(iv, iv, &aes->iv_key->openssl_key, AES_DECRYPT);
+  AES_decrypt(iv, iv, &aes->iv_key->openssl_key);
 }
 
 

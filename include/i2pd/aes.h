@@ -25,8 +25,8 @@ struct tunnel_AES
 {
   struct aes_key_impl * layer_key;
   struct aes_key_impl * iv_key;
-  void (*encrypt)(struct tunnel_AES *, tunnel_data_message*); // encrypt message in place
-  void (*decrypt)(struct tunnel_AES *, tunnel_data_message*); // decrypt message in place
+  void (*encrypt)(struct tunnel_AES *, tunnel_data_message*); // encrypt message
+  void (*decrypt)(struct tunnel_AES *, tunnel_data_message*); // decrypt message
 };
 
 /** @breif initialize function pointers and members */

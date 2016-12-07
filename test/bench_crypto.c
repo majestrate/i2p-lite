@@ -6,13 +6,38 @@
 #include <i2pd/log.h>
 #include <openssl/rand.h>
 
-static void benchmark_tunnel_crypto(size_t n)
+static void benchmark_aes(size_t n)
 {
+  size_t fails = 0;
   struct tunnel_AES aes;
   aes_key k = {0};
+  RAND_bytes(k, sizeof(aes_key));
   tunnel_AES_init(&aes);
   aes_key_new(&aes.layer_key, &k);
   aes_key_new(&aes.iv_key, &k);
+
+  tunnel_data_message msg = {0};
+
+  while(n--) {
+    aes.encrypt(&aes, &msg);
+    aes.decrypt(&aes, &msg);
+    size_t c = 0;
+    while(c < sizeof(tunnel_data_message)) {
+      if(msg[c]) {
+        // fail (probably)
+        fails ++;
+        break;
+      }
+      c++;
+    }
+  }
+
+  aes_key_free(&aes.layer_key);
+  aes_key_free(&aes.iv_key);
+
+  if(fails) {
+    i2p_error(LOG_MAIN, "tunnel crypto fails: %lu", fails);
+  }
 }
 static void benchmark_dsa(size_t n)
 {
@@ -112,6 +137,8 @@ int main(int argc, char * argv[])
   i2p_crypto_init(cc);
 
   while(rounds < 10000) {
+    i2p_info(LOG_MAIN, "benchmark aes %lu rounds", rounds * 10);
+    benchmark_aes(rounds * 10);
     i2p_info(LOG_MAIN, "benchmark elg %lu rounds", rounds / 10);
     benchmark_elg(rounds / 10);
     i2p_info(LOG_MAIN, "benchmark dsa %lu rounds", rounds); 
