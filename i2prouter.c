@@ -52,7 +52,7 @@ int main(int argc, char * argv[])
   char * floodfill_bootstrap = NULL;
   char * reseed_url = NULL;
   int loglevel = L_INFO;
-
+  
   struct router_context * router = NULL;
   
   while((opt = getopt(argc, argv, "vhf:b:u:")) != -1) {
@@ -103,7 +103,7 @@ int main(int argc, char * argv[])
     }
   }
   
-  struct i2p_config * cfg;
+  struct i2p_config * cfg = NULL;
   if(!i2p_config_load(&cfg, configfile)) {
     i2p_error(LOG_MAIN, "failed to load %s", configfile);
     return 1;

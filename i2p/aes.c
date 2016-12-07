@@ -92,7 +92,7 @@ int detect_aesni()
     : "=a"(eax), "=c"(ecx)
     : "a"(1), "c"(0)
     : "%ebx", "%edx");
-  return ecx & flag == flag;
+  return (ecx & flag) == flag;
 #else
   return 0;
 #endif

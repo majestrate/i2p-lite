@@ -1,5 +1,5 @@
 #ifndef I2P_DSA_H_
-#define I2P_DSA_H
+#define I2P_DSA_H_
 #include <stdint.h>
 #include <unistd.h>
 
