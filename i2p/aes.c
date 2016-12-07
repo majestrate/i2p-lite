@@ -15,9 +15,8 @@ void aes_key_new(struct aes_key_impl ** k, aes_key * keydata)
   *k = xmalloc(sizeof(struct aes_key_impl));
   if(aesni_enabled()) {
     memcpy((*k)->native_key, *keydata, sizeof(aes_key));
-  } else {
-    AES_set_encrypt_key(*keydata, 256, &(*k)->openssl_key);
   }
+  AES_set_encrypt_key(*keydata, 256, &(*k)->openssl_key);
 }
 
 void aes_key_free(struct aes_key_impl ** k)
