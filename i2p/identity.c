@@ -101,7 +101,7 @@ int i2p_identity_write(struct i2p_identity * i, int fd)
 
 void i2p_identity_free(struct i2p_identity ** i)
 {
-  i2p_cert_free(&(*i)->cert);
+  if((*i)->cert) i2p_cert_free(&(*i)->cert);
   if((*i)->elg) elg_Encryption_free(&(*i)->elg);
   if((*i)->dsa) dsa_Verify_free(&(*i)->dsa);
   if((*i)->eddsa) eddsa_Verify_free(&(*i)->eddsa);

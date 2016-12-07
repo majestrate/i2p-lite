@@ -8,6 +8,8 @@ char * path_join(const char * base, ...);
 
 int check_file(char * path);
 
+int del_file(char * path);
+
 int _is_dir(char * path, void * u);
 
 int _is_file(char * path, void * u);

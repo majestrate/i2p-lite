@@ -41,6 +41,11 @@ int check_file(char * path)
   return 1;
 }
 
+int del_file(char * path)
+{
+  return unlink(path);
+}
+
 int _is_file(char * path, void * u)
 {
   (void) u;

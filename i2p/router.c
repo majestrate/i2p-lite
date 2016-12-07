@@ -75,12 +75,19 @@ int router_context_load(struct router_context * ctx)
     }
   }
   if(!check_file(ctx->router_keys)) {
-    // no router.keys 
+    // no router.keys
+    i2p_info(LOG_ROUTER, "%s not found, regenerating router keys", ctx->router_keys);
     // generate our router identity keys, this saves router.keys to disk
     if(!router_context_regenerate_identity(ctx, DEFAULT_IDENTITY_SIG_TYPE)) {
-      // error, wut ?
-      i2p_error(LOG_ROUTER, "Failed to generate new router identity, %s", strerror(errno));
-      return 0;
+      i2p_error(LOG_ROUTER, "Bad router keys format, regenerating %s", ctx->router_keys);
+      // bad format
+      del_file(ctx->router_keys);
+      // try again
+      if(!router_context_regenerate_identity(ctx, DEFAULT_IDENTITY_SIG_TYPE)) {
+        // wtf again?
+        i2p_error(LOG_ROUTER, "wtf could not regenerate router keys: %s", strerror(errno));
+        return 0;
+      }
     }
   }
 
