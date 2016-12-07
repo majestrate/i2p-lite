@@ -1,5 +1,6 @@
 #include <i2pd/aes.h>
 #include <i2pd/crypto.h>
+#include <i2pd/memory.h>
 #include <openssl/aes.h>
 #include <string.h>
 
@@ -9,24 +10,20 @@ struct aes_key_impl
   AES_KEY openssl_key;
 };
 
-void aes_key_init(struct aes_key_impl * k, uint8_t * data)
+void aes_key_init(struct aes_key_impl ** k, aes_key * keydata)
 {
+  *k = xmalloc(sizeof(struct aes_key_impl));
   if(aesni_enabled()) {
-    memcpy(k->native_key, data, sizeof(aes_key));
+    memcpy((*k)->native_key, *keydata, sizeof(aes_key));
   } else {
-    AES_set_encrypt_key(data, 256, &k->openssl_key);
+    AES_set_encrypt_key(*keydata, 256, &(*k)->openssl_key);
   }
 }
 
-
-static void tunnel_AESNI_encrypt(struct tunnel_AES * aes, tunnel_data_message * block)
+void aes_key_free(struct aes_key_impl ** k)
 {
-  // TODO: implement aesni assembler
-}
-
-static void tunnel_AESNI_decrypt(struct tunnel_AES * aes, tunnel_data_message * block)
-{
-  // TODO: implement aesni assembler
+  free(*k);
+  *k = NULL;
 }
 
 #if defined(__x86_64__) || defined(__SSE__)
@@ -66,6 +63,19 @@ static void tunnel_aes_decrypt(struct tunnel_AES * aes, tunnel_data_message * bl
   }
   // double decrypt IV
   AES_ecb_encrypt(iv, iv, &aes->iv_key->openssl_key, AES_DECRYPT);
+}
+
+
+static void tunnel_AESNI_encrypt(struct tunnel_AES * aes, tunnel_data_message * block)
+{
+  // TODO: implement aesni assembler
+  tunnel_aes_encrypt(aes, block);
+}
+
+static void tunnel_AESNI_decrypt(struct tunnel_AES * aes, tunnel_data_message * block)
+{
+  // TODO: implement aesni assembler
+  tunnel_aes_decrypt(aes, block);
 }
 
 

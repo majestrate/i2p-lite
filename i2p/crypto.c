@@ -288,6 +288,11 @@ int i2p_crypto_init(struct i2p_crypto_config cfg)
   if(detect_aesni()) {
     i2p_info(LOG_CRYPTO, "AESNI is available");
     crypto->aesni = cfg.aesni;
+    if(crypto->aesni) {
+      i2p_info(LOG_CRYPTO, "AESNI enabled :^D");
+    }
+  } else {
+    i2p_info(LOG_CRYPTO, "AESNI is not available");
   }
   if (cfg.sanity_check) {
     i2p_info(LOG_CRYPTO, "doing crypto sanity check");

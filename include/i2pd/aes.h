@@ -15,7 +15,10 @@ typedef uint8_t aes_key[32];
 struct aes_key_impl;
 
 /** @brief initialize aes key with key data */
-void aes_key_new(struct aes_key_impl * k, uint8_t * data);
+void aes_key_new(struct aes_key_impl ** k, aes_key * key);
+
+/** @brief free aes key */
+void aes_key_free(struct aes_key_impl ** k);
 
 /** @brief tunnel encryption / decryption context */
 struct tunnel_AES
@@ -28,7 +31,6 @@ struct tunnel_AES
 
 /** @breif initialize function pointers and members */
 void tunnel_AES_init(struct tunnel_AES * aes);
-
 
 struct ecb_AES
 {

@@ -194,7 +194,7 @@ static void ntcp_free_connect_event(struct ntcp_conn_connect_event ** e)
 static void ntcp_conn_read_alloc_cb(uv_handle_t * handle, size_t suggested, uv_buf_t *buf)
 {
   struct ntcp_conn * conn = (struct ntcp_conn *) handle->data;
-  buf->base = conn->readbuff;
+  buf->base = (char *) conn->readbuff;
   if(suggested > NTCP_BUFF_SIZE) {
     buf->len = NTCP_BUFF_SIZE;
   } else {

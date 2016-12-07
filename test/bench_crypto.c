@@ -1,3 +1,4 @@
+#include <i2pd/aes.h>
 #include <i2pd/crypto.h>
 #include <i2pd/dsa.h>
 #include <i2pd/eddsa.h>
@@ -5,6 +6,14 @@
 #include <i2pd/log.h>
 #include <openssl/rand.h>
 
+static void benchmark_tunnel_crypto(size_t n)
+{
+  struct tunnel_AES aes;
+  aes_key k = {0};
+  tunnel_AES_init(&aes);
+  aes_key_new(&aes.layer_key, &k);
+  aes_key_new(&aes.iv_key, &k);
+}
 static void benchmark_dsa(size_t n)
 {
   struct dsa_Sign * s = NULL;
