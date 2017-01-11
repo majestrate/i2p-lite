@@ -50,74 +50,9 @@ void router_info_process_props(char * k, char * v, void * u)
   
 }
 
-int router_info_load(struct router_info * ri, int fd)
+int router_info_load(struct router_info * ri, FILE * f)
 {
-  int ret;
-  struct stat st;
-  if(fstat(fd, &st) == -1) {
-    i2p_error(LOG_DATA, "fstat %s", strerror(errno));
-    return 0;
-  }
-  ri->len = st.st_size;
-
-  ri->data = mallocx(ri->len, MALLOCX_ZERO);
-
-  uint8_t * d;
-  
-  size_t idx = 0;
-  ssize_t r = 0;
-  do {
-    r = read(fd, ri->data + idx, 128);
-    if (r == -1) break;
-    idx += r;
-  } while(idx < ri->len);
-
-  ret = idx == ri->len;
-  
-  if (!ret)  {
-    // bad read
-    ri->len = 0;
-    i2p_error(LOG_DATA, "failed to load router info, short read");
-  }
-  d = ri->data;
-  i2p_identity_new(&ri->identity);
-  if(( d = i2p_identity_read_buffer(ri->identity, d, ri->len))) {
-    if (router_info_verify(ri)) {
-      // parse internal members
-      // read timestamp
-      ri->timestamp = bufbe64toh(d);
-      d += sizeof(uint64_t);
-      // read addresses
-      uint8_t num = *d;
-      i2p_debug(LOG_DATA, "router info has %d addresses", num);
-      ri->num_addresses = num;
-      d ++;
-      if (num) {
-        ri->addresses = mallocx(ri->num_addresses * sizeof(struct i2p_addr *), MALLOCX_ZERO);
-        uint8_t i = 0;
-        while(i < num && d) {
-          d = i2p_addr_read_dict( &(ri->addresses[i]), d, d - ri->data);
-          i ++;
-        }
-      }
-      // peers
-      uint8_t numPeers = *d;
-      d ++;
-      // skip peers
-      d += numPeers * 32;
-      // read properties
-      d = read_i2pdict(d, d - ri->data, router_info_process_props, ri);
-    } else {
-      char * ident = router_info_base64_ident(ri);
-      i2p_error(LOG_DATA, "router info %s has invalid siganture", ident);
-      free(ident);
-    }
-  } else {
-    i2p_error(LOG_DATA, "failed to read identity for router info of size %lu", ri->len);
-    // bad router identitiy
-    ret = 0;
-  }
-  return ret;
+  return 0;
 }
 
 int router_info_verify(struct router_info * ri)

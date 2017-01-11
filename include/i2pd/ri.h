@@ -11,6 +11,8 @@
 /** @brief parameters for initializing a router info */
 struct router_info_config
 {
+  /** iwp address info */
+  struct iwp_config * iwp;
   /** ntcp address info */
   struct ntcp_config * ntcp;
   /** ssu address info */
@@ -39,9 +41,6 @@ int router_info_verify(struct router_info * ri);
 /** @brief generate a new router info and sign it */
 void router_info_generate(struct i2p_identity_keys * k, struct router_info_config * cfg, struct router_info ** ri);
 
-/** @brief return 1 if this router info is a floodfill, otherwise return 0 */
-int router_info_is_floodfill(struct router_info * ri);
-
 /** @brief get this router info's caps section, if router info has no caps, caps is set to NULL, caller must free result when done */
 void router_info_get_caps(struct router_info * ri, char ** caps);
 
@@ -64,7 +63,7 @@ typedef void (*router_info_addr_iter)(struct router_info *, struct i2p_addr *, v
 void router_info_iter_addrs(struct router_info * ri, router_info_addr_iter i, void * u);
 
 /** @brief convert this router info into a database store message */
-void router_info_to_dsm(struct router_info * ri, struct i2np_msg ** msg);
+void router_info_to_dbsm(struct router_info * ri, struct dbs_msg ** msg);
 
 void router_info_get_identity(struct router_info * ri, struct i2p_identity ** ident);
 

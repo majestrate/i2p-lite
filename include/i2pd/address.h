@@ -1,8 +1,9 @@
 #ifndef I2PD_ADDRESS_H_
 #define I2PD_ADDRESS_H_
+#include <i2pd/datatypes.h>
 #include <i2pd/types.h>
-#include <i2pd/aes.h>
 #include <unistd.h>
+
 
 /** @brief network address */
 struct i2p_addr
@@ -12,8 +13,7 @@ struct i2p_addr
   uint16_t port;
   uint8_t cost;
   uint64_t date;
-  // for ssu
-  aes_key key;
+  pub_enc_key_t key;
 };
 
 /** @brief read i2p addr from memory */

@@ -29,7 +29,7 @@ static struct i2np_tc_hashnode * i2np_tc_hashnode_free(struct i2np_tc_hashnode *
   }
   return next;
 }
-                                                
+
 static void i2np_tc_hashmap_init(struct i2np_tc_hashmap ** h)
 {
   *h = xmalloc(sizeof(struct i2np_tc_hashmap));
@@ -106,7 +106,6 @@ void i2np_tunnel_context_new(struct router_context * router, struct i2np_tunnel_
   *t = xmalloc(sizeof(struct i2np_tunnel_context));
   (*t)->i2np = xmalloc(sizeof(struct i2np_message_router));
   (*t)->i2np->impl = *t;
-  (*t)->i2np->dispatch = i2np_tunnel_context_dispatch;
   (*t)->router = router;
 }
 

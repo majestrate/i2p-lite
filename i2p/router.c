@@ -92,14 +92,14 @@ int router_context_load(struct router_context * ctx)
   }
 
   // load router.keys
-  int fd = open(ctx->router_keys, O_RDONLY);
-  if(fd == -1) {
+  FILE * f = fopen(ctx->router_keys, "r");
+  if(!f) {
     i2p_error(LOG_ROUTER, "failed to read router identity at %s, %s", ctx->router_keys, strerror(errno));
     return 0;
   } else {
     // load existing keys
     i2p_identity_keys_new(&ctx->privkeys);
-    if(i2p_identity_keys_read(ctx->privkeys, fd)) {
+    if(i2p_identity_keys_read(ctx->privkeys, f)) {
       struct router_info_config * ri_conf = NULL;
       i2p_debug(LOG_ROUTER, "loaded router identity private keys from %s", ctx->router_keys);
       router_info_config_new(&ri_conf);
@@ -121,26 +121,26 @@ int router_context_load(struct router_context * ctx)
       // failed to read identity
       i2p_error(LOG_ROUTER, "failed to parse router identity at %s, %s", ctx->router_keys, strerror(errno));
       i2p_identity_keys_free(&ctx->privkeys);
-      close(fd);
+      fclose(f);
       return 0;
     }
-    close(fd);
+    fclose(f);
   }
-  fd = open(ctx->router_info, O_RDONLY);
-  if (fd == -1) {
+  f = fopen(ctx->router_info, "r");
+  if (!f) {
     i2p_error(LOG_ROUTER, "couldn't load router info file %s, %s", ctx->router_info, strerror(errno));
     i2p_identity_keys_free(&ctx->privkeys);
     return 0;
   } else {
     router_info_new(&ctx->our_ri);
-    if(!router_info_load(ctx->our_ri, fd)) {
+    if(!router_info_load(ctx->our_ri, f)) {
       i2p_error(LOG_ROUTER, "couldn't parse router info file %s, %s", ctx->router_info, strerror(errno));
-      close(fd);
+      fclose(f);
       router_info_free(&ctx->our_ri);
       i2p_identity_keys_free(&ctx->privkeys);
       return 0;
     }
-    close(fd);
+    fclose(f);
   }
   if (ctx->our_ri) {
     char * i = router_info_base64_ident(ctx->our_ri);
@@ -194,13 +194,7 @@ static void router_context_ensure_min_peers(struct router_context * ctx)
           // start bootstrap attempt
           char * ident = router_info_base64_ident(ri);
           if (router_info_verify(ri)) {
-            if(router_info_is_floodfill(ri)) {
-              router_context_try_bootstrap_from_floodfill(ctx, ri);
-            } else {
-              // not a floodfill
-              i2p_error(LOG_ROUTER, "%s is not a floodfill router", ident);
-              router_info_free(&ri);
-            }
+            router_context_try_bootstrap_from_router(ctx, ri);
           } else {
             // invalid file or signature
             i2p_error(LOG_ROUTER, "%s is invalid", ident);
@@ -230,24 +224,21 @@ int router_context_regenerate_identity(struct router_context * ctx, uint16_t sig
 {
   int res = 0;
   struct i2p_identity_keys * k = NULL;
-  int fd = open(ctx->router_keys, O_CREAT | O_WRONLY, 0600);
-  if(fd == -1) return 0;
+  FILE * f = fopen(ctx->router_keys, "w");
+  if(!f) return 0;
   i2p_identity_keys_new(&k);
   i2p_identity_keys_generate(k, sigtype);
-  if(i2p_identity_keys_write(k, fd)) res = 1;
-  close(fd);
+  if(i2p_identity_keys_write(k, f)) res = 1;
+  fclose(f);
   return res;
 }
 
-void router_context_try_bootstrap_from_floodfill(struct router_context * ctx, struct router_info * ri)
+void router_context_try_bootstrap_from_router(struct router_context * ctx, struct router_info * ri)
 {
-  if(router_info_is_floodfill(ri)) {
-    char * ident = router_info_base64_ident(ri);
-    i2p_info(LOG_ROUTER, "try bootstrap from %s", ident);
-    // do floodfill boostrap here
-    
-    free(ident);
-  }
+  char * ident = router_info_base64_ident(ri);
+  i2p_info(LOG_ROUTER, "try bootstrap from %s", ident);
+  // do floodfill boostrap here
+  free(ident);
 }
 
 void router_context_try_reseed_from(struct router_context * ctx, const char * url)

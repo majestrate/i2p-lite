@@ -16,7 +16,7 @@ void i2p_cert_new(struct i2p_cert ** c)
 void i2p_cert_init(struct i2p_cert * c, uint8_t type, uint8_t * data, uint16_t len)
 {
   c->len = len + 3;
-  c->data = xmalloc(len);
+  c->data = xmalloc(c->len);
   c->data[0] = type;
   htobe16buf(c->data+1, len);
   if (len) memcpy(c->data+3, data, len);

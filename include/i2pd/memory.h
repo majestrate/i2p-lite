@@ -5,6 +5,8 @@
 
 #define xmalloc(sz) mallocx(sz, MALLOCX_ZERO)
 
+#define xcalloc(nm, sz) calloc(nm, sz)
+
 uint16_t buf16toh(const void *buf);
  
 uint32_t buf32toh(const void *buf);

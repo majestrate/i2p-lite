@@ -1,29 +1,32 @@
-#include <i2pd/aes.h>
+#include <i2pd/chacha.h>
 #include <i2pd/crypto.h>
 #include <i2pd/dsa.h>
 #include <i2pd/eddsa.h>
 #include <i2pd/elg.h>
 #include <i2pd/log.h>
-#include <openssl/rand.h>
+#include <i2pd/rand.h>
 
+
+/*
 static void benchmark_aes(size_t n)
 {
   size_t fails = 0;
   struct tunnel_AES aes;
   aes_key k = {0};
-  RAND_bytes(k, sizeof(aes_key));
+  i2p_rand(k, sizeof(aes_key));
   tunnel_AES_init(&aes);
   aes_key_new(&aes.layer_key, &k);
   aes_key_new(&aes.iv_key, &k);
 
-  tunnel_data_message msg = {0};
+  tunnel_data_message msg_in = {0};
+  tunnel_data_message msg_out = {0};
 
   while(n--) {
-    aes.encrypt(&aes, &msg);
-    aes.decrypt(&aes, &msg);
+    aes.encrypt(&aes, &msg_in, &msg_out);
+    aes.decrypt(&aes, &msg_in, &msg_out);
     size_t c = 0;
     while(c < sizeof(tunnel_data_message)) {
-      if(msg[c]) {
+      if(msg_out[c]) {
         // fail (probably)
         fails ++;
         break;
@@ -39,6 +42,33 @@ static void benchmark_aes(size_t n)
     i2p_error(LOG_MAIN, "tunnel crypto fails: %lu", fails);
   }
 }
+*/
+
+static void benchmark_chacha(size_t n)
+{
+  size_t encryptfails = 0;
+  size_t decryptfails = 0;
+  struct tunnel_ChaCha ch;
+  tunnel_ChaCha_init(&ch);
+  i2p_rand(ch.key, sizeof(tunnel_key_t));
+
+  tunnel_data_message_v2 msg = {0};
+  tunnel_data_block_v2 block = {0};
+
+  i2p_rand(block, sizeof(tunnel_data_block_v2));
+
+  while(n--) {
+    if(ch.encrypt(&ch, &block, &msg)) encryptfails ++;
+    if(ch.decrypt(&ch, &msg, &block)) decryptfails ++;
+  }
+  if(decryptfails) {
+    i2p_error(LOG_MAIN, "%lu decrypt fails", decryptfails);
+  }
+  if(encryptfails) {
+    i2p_error(LOG_MAIN, "%lu encrypt fails", encryptfails);
+  }
+}
+
 static void benchmark_dsa(size_t n)
 {
   struct dsa_Sign * s = NULL;
@@ -107,7 +137,7 @@ static void benchmark_eddsa(size_t n)
   eddsa_Sign_new(&s, &priv);
 
   while(n--) {
-    RAND_bytes(data, sizeof(data));
+    i2p_rand(data, sizeof(data));
     eddsa_sign_data(s, data, sizeof(data), &sig);
     if (!eddsa_verify_signature(v, data, sizeof(data), &sig))
       fails ++;
@@ -137,8 +167,10 @@ int main(int argc, char * argv[])
   i2p_crypto_init(cc);
 
   while(rounds < 10000) {
-    i2p_info(LOG_MAIN, "benchmark aes %lu rounds", rounds * 10);
-    benchmark_aes(rounds * 10);
+    //i2p_info(LOG_MAIN, "benchmark aes %lu rounds", rounds * 10);
+    //benchmark_aes(rounds * 10);
+    i2p_info(LOG_MAIN, "benchmark chacha %lu rounds", rounds);
+    benchmark_chacha(rounds);
     i2p_info(LOG_MAIN, "benchmark elg %lu rounds", rounds / 10);
     benchmark_elg(rounds / 10);
     i2p_info(LOG_MAIN, "benchmark dsa %lu rounds", rounds); 

@@ -51,7 +51,7 @@ int router_context_regenerate_identity(struct router_context * ctx, uint16_t sig
 void router_context_update_router_info(struct router_context * ctx, struct router_info_config * conf);
 
 /** @brief try bootstrapping from floodfill */
-void router_context_try_bootstrap_from_floodfill(struct router_context * ctx, struct router_info * ri);
+void router_context_try_bootstrap_from_router(struct router_context * ctx, struct router_info * ri);
 
 void router_context_get_identity(struct router_context * ctx, struct i2p_identity ** ident);
 

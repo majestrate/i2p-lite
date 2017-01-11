@@ -2,7 +2,7 @@
 #define I2PD_TUNNELS_H_
 #include <i2pd/i2np.h>
 #include <i2pd/netdb.h>
-#include <i2pd/aes.h>
+#include <i2pd/tunnel_crypto.h>
 
 // forward declare
 struct router_context;
@@ -10,9 +10,6 @@ struct router_context;
 
 /** @brief handler of all inbound i2np messages for tunnels */
 struct i2np_tunnel_context;
-
-/** @brief tunnel id type, a 4 byte integer */
-typedef uint32_t tunnel_id_t;
 
 struct i2np_tunnel_hop
 {
@@ -47,14 +44,20 @@ struct i2np_tunnel
   /** @brief next hop's tunnel id */
   tunnel_id_t next_tid;
 
-  /** @brief tunnel encrypt/decrypt */
-  struct tunnel_AES aes;
+  /**
+     @brief tunnel encryption/decryption context
+  */
+  tunnel_Crypto_t crypto;
   
-  /** @brief handle tunnel gateway message sent to this tunnel */
-  void (*tunnel_gateway)(struct i2np_tunnel *, struct i2np_msg * );
-  /** @brief handle tunnel data message sent to this tunnel, either encrypts or decrypts */
-  void (*tunnel_data)(struct i2np_tunnel *,tunnel_data_message *);
-  
+  /**
+     @brief handle tunnel gateway message sent to this tunnel
+  */
+  void (*tunnel_gateway)(struct i2np_tunnel *, struct tgw_msg * );
+  /**
+     @brief handle version 2 tunnel data message sent to this tunnel
+  */
+  void (*tunnel_data)(struct i2np_tunnel *, tunnel_data_message_v2 *);
+
 };
 
 #define I2NP_TUNNEL_STATUS_INITIAL (0)

@@ -586,8 +586,10 @@ void ntcp_conn_get_ident_hash(struct ntcp_conn * c, ident_hash * h)
 
 void ntcp_config_to_address(struct ntcp_config * c, struct i2p_addr ** a)
 {
-  *a = xmalloc(sizeof(struct i2p_addr));
-  (*a)->style = strdup("NTCP");
-  (*a)->host = strdup(c->addr);
-  (*a)->port = c->port;
+  if(c && c->addr) {
+    *a = xmalloc(sizeof(struct i2p_addr));
+    (*a)->style = strdup("NTCP");
+    (*a)->host = strdup(c->addr);
+    (*a)->port = c->port;
+  }
 }

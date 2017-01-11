@@ -1,15 +1,15 @@
 #include <assert.h>
-#include <i2pd/aes.h>
 #include <i2pd/crypto.h>
 #include <i2pd/dsa.h>
 #include <i2pd/eddsa.h>
 #include <i2pd/elg.h>
 #include <i2pd/log.h>
 #include <i2pd/memory.h>
+#include <i2pd/rand.h>
 #include <openssl/crypto.h>
 #include <openssl/dsa.h>
 #include <openssl/ssl.h>
-#include <openssl/rand.h>
+#include <sodium/core.h>
 
 
 // take care about openssl version
@@ -94,16 +94,9 @@ struct crypto_consts
   // RSA
   BIGNUM * rsae;
 
-  // set to 1 if aesni is dected on runtime
-  int aesni;
 };
 
 struct crypto_consts * crypto = NULL;
-
-int aesni_enabled()
-{
-  return crypto->aesni;
-}
 
 // create new dsa context with i2p primes
 // set public key and private key if present
@@ -220,7 +213,7 @@ static int dsa_test()
   dsa_keygen(&priv, &pub);
 
   // generate random block
-  RAND_bytes(block, sizeof(block));
+  i2p_rand(block, sizeof(block));
 
   // new signer 
   dsa_Sign_new(&signer, &priv);
@@ -265,7 +258,7 @@ static int eddsa_test()
   eddsa_Sign_new(&s, &priv);
   eddsa_Verify_new(&v, &pub);
   
-  RAND_bytes(data, sizeof(data));
+  i2p_rand(data, sizeof(data));
 
   eddsa_sign_data(s, data, sizeof(data), &sig);
 
@@ -280,22 +273,17 @@ static int eddsa_test()
 int i2p_crypto_init(struct i2p_crypto_config cfg)
 {
   int ret = 1;
+  if(sodium_init() == -1) {
+    return 0;
+  }
   SSL_library_init();
   crypto = xmalloc(sizeof(struct crypto_consts));
   i2p_elg_init();
   i2p_dsa_init();
   i2p_rsa_init();
-  if(detect_aesni()) {
-    i2p_info(LOG_CRYPTO, "AESNI is available");
-    crypto->aesni = cfg.aesni;
-    if(crypto->aesni) {
-      i2p_info(LOG_CRYPTO, "AESNI enabled :^D");
-    }
-  } else {
-    i2p_info(LOG_CRYPTO, "AESNI is not available");
-  }
   if (cfg.sanity_check) {
     i2p_info(LOG_CRYPTO, "doing crypto sanity check");
+    /*
     if(!elg_test()) {
       i2p_error(LOG_CRYPTO, "elg test failure");
       ret = 0;
@@ -308,6 +296,7 @@ int i2p_crypto_init(struct i2p_crypto_config cfg)
       i2p_error(LOG_CRYPTO, "ecdsa test failure");
       ret = 0;
     }
+    */
     if(!eddsa_test()) {
       i2p_error(LOG_CRYPTO, "eddsa test failure");
       ret = 0;

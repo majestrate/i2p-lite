@@ -24,7 +24,7 @@ void i2p_addr_process_dict(char * k, char * v, void * u)
     // for ssu
     uint8_t * key = NULL;
     size_t len = i2p_base64_decode_str(v, &key);
-    if (len == sizeof(aes_key)) {
+    if (len == sizeof(pub_enc_key_t)) {
       memcpy(a->key, key, len);
     }
     free(key);
@@ -33,7 +33,7 @@ void i2p_addr_process_dict(char * k, char * v, void * u)
 
 uint8_t * i2p_addr_read_dict(struct i2p_addr ** addr, uint8_t * b, size_t l)
 {
-  (*addr) = mallocx(sizeof(struct i2p_addr), MALLOCX_ZERO);
+  (*addr) = xmalloc(sizeof(struct i2p_addr));
   (*addr)->cost = *b;
   b ++ ;
   (*addr)->date = bufbe64toh(b);

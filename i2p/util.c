@@ -102,6 +102,11 @@ int iterate_all_with_filter(char * path, dir_iterator i, dir_filter f, void * u)
   return errno == 0;
 }
 
+uint8_t * read_bytestring(uint8_t * buf, size_t len, uint8_t ** bs, size_t * sz)
+{
+  
+}
+
 uint8_t * read_i2pstring(uint8_t * buf, size_t len, char ** str)
 {
   uint8_t sz = *buf;

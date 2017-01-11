@@ -62,3 +62,9 @@ int eddsa_verify_signature(struct eddsa_Verify * v, const uint8_t * data, const 
 {
   return ed25519_ref10_open(*sig, data, len, v->k) == 0;
 }
+
+void eddsa_Verify_get_key(struct eddsa_Verify * v, uint8_t ** k)
+{
+  *k = v->k;
+}
+
