@@ -87,13 +87,10 @@ void router_info_generate(struct i2p_identity_keys * k, struct router_info_confi
   } 
 }
 
-int router_info_write(struct router_info * ri, int fd)
+int router_info_write(struct router_info * ri, FILE * f)
 {
   if(!ri->len) return 0; // empty
-  int r = write(fd, ri->data, ri->len);
-  if(r == -1) return 0;
-  if(fsync(fd) == -1) return 0;
-  return r == ri->len;
+  return fwrite(ri->data, ri->len, 1, f) != ri->len;
 }
 
 void router_info_iter_addrs(struct router_info * ri, router_info_addr_iter i, void * u)

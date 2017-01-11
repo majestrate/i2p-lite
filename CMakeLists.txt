@@ -22,13 +22,13 @@ include_directories(include)
 include_directories(contrib/include)
 
 file(GLOB LIBI2P_SRC "i2p/*.c")
-file(GLOB REF10_SRC "contrib/ref10/*.c")
+#file(GLOB REF10_SRC "contrib/ref10/*.c")
 
 add_executable(${EXE} "i2prouter.c")
 add_library(i2p ${LIBI2P_SRC})
-add_library(ref10 ${REF10_SRC})
+#add_library(ref10 ${REF10_SRC})
 
-set(LIBS i2p ref10 ${UV_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} ${SODIUM_LIBRARIES} -ljemalloc)
+set(LIBS i2p ${UV_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} ${SODIUM_LIBRARIES} -ljemalloc)
 
 target_link_libraries(${EXE} ${LIBS})
 add_executable(benchmark_crypto "test/bench_crypto.c")

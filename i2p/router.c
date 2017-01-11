@@ -184,13 +184,13 @@ static void router_context_ensure_min_peers(struct router_context * ctx)
       i2p_info(LOG_ROUTER, "no peers, trying bootstrap from router info file at %s", ctx->floodfill);
       struct router_info * ri = NULL;
       router_info_new(&ri);
-      int fd = open(ctx->floodfill, O_RDONLY);
-      if (fd == -1) {
+      FILE * f = fopen(ctx->floodfill, "r");
+      if (f == NULL) {
         // bad file
         i2p_error(LOG_ROUTER, "couldn't open router info file, %s", strerror(errno));
       } else {
         // load from file descriptor
-        if(router_info_load(ri, fd)) {
+        if(router_info_load(ri, f)) {
           // start bootstrap attempt
           char * ident = router_info_base64_ident(ri);
           if (router_info_verify(ri)) {
@@ -206,7 +206,7 @@ static void router_context_ensure_min_peers(struct router_context * ctx)
           i2p_error(LOG_ROUTER, "%s does not look like a router info", ctx->floodfill);
           router_info_free(&ri);
         }
-        close(fd);
+        fclose(f);
       }
     } else if (ctx->reseed) {
       // bootstrap from reseed
@@ -277,13 +277,13 @@ void router_context_update_router_info(struct router_context * ctx, struct route
 
   router_info_generate(ctx->privkeys, conf, &ctx->our_ri); // generate router info and sign
   
-  int fd = open(ctx->router_info, O_WRONLY | O_CREAT);
-  if(fd == -1) {
+  FILE * f = fopen(ctx->router_info, "w+");
+  if(f == NULL) {
     // could not open file
     i2p_error(LOG_ROUTER, "Failed to open %s, %s", ctx->router_info, strerror(errno));
     return;
   }
   // write router info
-  router_info_write(ctx->our_ri, fd);
-  close(fd);
+  router_info_write(ctx->our_ri, f);
+  fclose(f);
 }

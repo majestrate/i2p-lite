@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #define I2P_CERT_TYPE_NULL 0
 #define I2P_CERT_TYPE_HASHCASH 1
@@ -19,10 +20,10 @@ void i2p_cert_new(struct i2p_cert ** c);
 void i2p_cert_init(struct i2p_cert * c, uint8_t type, uint8_t * data, uint16_t len);
 
 /** @brief read from file descriptor */
-int i2p_cert_read(struct i2p_cert * c, int fd);
+int i2p_cert_read(struct i2p_cert * c, FILE * f);
 
 /** @brief write to file descriptor */
-int i2p_cert_write(struct i2p_cert * c, int fd);
+int i2p_cert_write(struct i2p_cert * c, FILE * f);
 
 /** @brief read from buffer */
 uint8_t * i2p_cert_read_buffer(struct i2p_cert * c, uint8_t * d, size_t len);

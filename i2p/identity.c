@@ -22,10 +22,10 @@ void i2p_identity_new(struct i2p_identity ** i)
   (*i) = xmalloc(sizeof(struct i2p_identity));
 }
 
-int i2p_identity_read(struct i2p_identity * i, int fd)
+int i2p_identity_read(struct i2p_identity * i, FILE * f)
 {
   eddsa_pubkey ed_pub = {0};
-  if(read(fd, ed_pub, sizeof(eddsa_pubkey)) != sizeof(eddsa_pubkey)) {
+  if(fread(ed_pub, sizeof(eddsa_pubkey), 1, f) != sizeof(eddsa_pubkey)) {
     // bad read
     i2p_error(LOG_DATA, "i2p identity read eddsa pub key failed");
     return 0;
@@ -35,7 +35,7 @@ int i2p_identity_read(struct i2p_identity * i, int fd)
 
   if(i->cert) i2p_cert_free(&i->cert); // free existing if it's there
   i2p_cert_new(&i->cert);
-  return i2p_cert_read(i->cert, fd);
+  return i2p_cert_read(i->cert, f);
 }
 
 uint8_t * i2p_identity_read_buffer(struct i2p_identity * i, uint8_t * in, size_t len)
@@ -56,13 +56,13 @@ uint8_t * i2p_identity_read_buffer(struct i2p_identity * i, uint8_t * in, size_t
   return i2p_cert_read_buffer(i->cert, in, len - sizeof(eddsa_pubkey));
 }
 
-int i2p_identity_write(struct i2p_identity * i, int fd)
+int i2p_identity_write(struct i2p_identity * i, FILE * f)
 {
   uint8_t * ed_pub = NULL;
   eddsa_Verify_get_key(i->eddsa, &ed_pub);
-  if(write(fd, ed_pub, sizeof(eddsa_pubkey)) == -1) return 0;
+  if(fwrite(ed_pub, sizeof(eddsa_pubkey), 1, f) == -1) return 0;
 
-  return i2p_cert_write(i->cert, fd);
+  return i2p_cert_write(i->cert, f);
 }
 
 void i2p_identity_free(struct i2p_identity ** i)

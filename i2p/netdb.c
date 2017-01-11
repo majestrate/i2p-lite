@@ -31,9 +31,9 @@ struct netdb_write_ctx
 };
 
 /** open file for entry given its ident hash */
-int netdb_open_file(struct i2p_netdb * db, ident_hash ident, int mode)
+FILE * netdb_open_file(struct i2p_netdb * db, ident_hash ident, const char * mode)
 {
-  int f = -1;
+  FILE * f = NULL;
   char * fpath = NULL;
   char buf[128] = {0};
   char skipdir[4] = {0};
@@ -48,7 +48,7 @@ int netdb_open_file(struct i2p_netdb * db, ident_hash ident, int mode)
     return f;
   
   fpath = path_join(db->rootdir, skipdir, buf, 0);
-  f = open(fpath, mode);
+  f = fopen(fpath, mode);
   free(fpath);
   return f;
 }
@@ -57,10 +57,10 @@ void netdb_write_entry(ident_hash h, struct router_info * ri, void * user)
 {
   struct netdb_write_ctx * ctx = (struct netdb_write_ctx*) user;
   if(ctx->result) {
-    int fd = netdb_open_file(ctx->db, h, O_WRONLY | O_CREAT);
-    if(fd != -1) {
-      ctx->result = router_info_write(ri, fd);
-      close(fd);
+    FILE * f = netdb_open_file(ctx->db, h, "w+");
+    if(f) {
+      ctx->result = router_info_write(ri, f);
+      fclose(f);
     } else ctx->result = 0; // fail
   }
 }
@@ -86,13 +86,13 @@ struct netdb_read_ctx
 void netdb_read_file(char * filename, void * c)
 {
   struct netdb_read_ctx * ctx = (struct netdb_read_ctx*) c;
-  int fd = open(filename, O_RDONLY);
-  if(fd != -1) {
+  FILE * f = fopen(filename, "r");
+  if(f) {
     struct router_info * ri;
     // intialize entry
     router_info_new(&ri);
     // load entry
-    if(router_info_load(ri, fd)) {
+    if(router_info_load(ri, f)) {
       // add it to hashmap
       netdb_hashmap_insert(ctx->db->map, ri);
       ctx->loaded ++;
@@ -102,7 +102,7 @@ void netdb_read_file(char * filename, void * c)
       i2p_warn(LOG_NETDB, "bad netdb entry %s", filename);
       router_info_free(&ri);
     }
-    close(fd);
+    fclose(f);
   } else {
     ctx->failed ++;
   }

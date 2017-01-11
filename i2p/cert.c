@@ -22,10 +22,10 @@ void i2p_cert_init(struct i2p_cert * c, uint8_t type, uint8_t * data, uint16_t l
   if (len) memcpy(c->data+3, data, len);
 }
 
-int i2p_cert_read(struct i2p_cert * c, int fd)
+int i2p_cert_read(struct i2p_cert * c, FILE * f)
 {
   uint8_t b[3];
-  if(read(fd, b, 3) != 3) {
+  if(fread(b, sizeof(uint8_t), 3, f) != 3) {
     // read error
     return 0;
   }
@@ -33,7 +33,8 @@ int i2p_cert_read(struct i2p_cert * c, int fd)
   c->data = xmalloc(c->len);
   memcpy(c->data, b, 3);
   if(c->len) {
-    if(read(fd, c->data + 3, c->len - 3) != c->len) {
+    int l = c->len - 3;
+    if(fread(c->data + 3, l, 1, f) != l) {
       // read error
       return 0;
     }
@@ -41,9 +42,9 @@ int i2p_cert_read(struct i2p_cert * c, int fd)
   return 1;
 }
 
-int i2p_cert_write(struct i2p_cert * c, int fd)
+int i2p_cert_write(struct i2p_cert * c, FILE * f)
 {
-  return write(fd, c->data, c->len) != -1;
+  return fwrite(c->data, c->len, 1, f) == c->len;
 }
 
 uint8_t * i2p_cert_read_buffer(struct i2p_cert * c, uint8_t * d, size_t len)

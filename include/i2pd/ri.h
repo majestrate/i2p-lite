@@ -33,7 +33,7 @@ void router_info_new(struct router_info ** ri);
 void router_info_free(struct router_info ** ri);
 
 /** @brief load router info from open file and verify, return 1 on success otherwise return 0 */
-int router_info_load(struct router_info * ri, int fd);
+int router_info_load(struct router_info * ri, FILE * f);
 
 /** @brief verify router info signature */
 int router_info_verify(struct router_info * ri);
@@ -51,7 +51,7 @@ uint8_t * router_info_load_buffer(struct router_info * ri, uint8_t * buf, size_t
 void router_info_hash(struct router_info * ri, ident_hash * ident);
 
 /** @brief write router info to file */
-int router_info_write(struct router_info * ri, int fd);
+int router_info_write(struct router_info * ri, FILE * f);
 
 /** @brief get base64 ident hash of this router info, caller must free returned string */
 char * router_info_base64_ident(struct router_info * ri);
