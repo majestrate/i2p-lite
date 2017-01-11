@@ -7,6 +7,7 @@
 * openssl or libressl
 * zlib
 * jemalloc
+* libsodium
 
 ## building
 
