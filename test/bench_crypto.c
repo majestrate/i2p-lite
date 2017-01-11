@@ -100,7 +100,8 @@ static void benchmark_eddsa(size_t n)
 int main(int argc, char * argv[])
 {
 
-  size_t rounds = 100;
+  // starting point
+  size_t rounds = 1000;
   
   struct mnet_crypto_config cc;
   cc.sanity_check = 1;
@@ -113,9 +114,7 @@ int main(int argc, char * argv[])
   
   mnet_crypto_init(cc);
 
-  while(rounds < 10000) {
-    //mnet_info(LOG_MAIN, "benchmark aes %lu rounds", rounds * 10);
-    //benchmark_aes(rounds * 10);
+  while(rounds < 200000) {
     mnet_info(LOG_MAIN, "benchmark chacha %lu rounds", rounds);
     benchmark_chacha(rounds);
     mnet_info(LOG_MAIN, "benchmark eddsa %lu rounds", rounds);

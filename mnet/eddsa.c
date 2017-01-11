@@ -4,19 +4,20 @@
 #include <mnet/hash.h>
 #include <assert.h>
 
+typedef uint8_t eddsa_crypto_sign_privkey[crypto_sign_SECRETKEYBYTES];
+
 struct eddsa_Verify {
   eddsa_pubkey k;
 };
 
 struct eddsa_Sign {
-  eddsa_privkey sk;
-  eddsa_pubkey pk;
+  eddsa_crypto_sign_privkey k;
 };
 
 
 void eddsa_Verify_new(struct eddsa_Verify ** v, eddsa_pubkey * pub)
 {
-  *v = mallocx(sizeof(struct eddsa_Verify), MALLOCX_ZERO);
+  *v = xmalloc(sizeof(struct eddsa_Verify));
   memcpy((*v)->k, *pub, sizeof(eddsa_pubkey));
 }
 
@@ -28,9 +29,9 @@ void eddsa_Verify_free(struct eddsa_Verify ** v)
 
 void eddsa_Sign_new(struct eddsa_Sign ** s, eddsa_privkey * priv)
 {
-  *s = mallocx(sizeof(struct eddsa_Sign), MALLOCX_ZERO);
-  memcpy((*s)->sk, *priv, sizeof(eddsa_privkey));
-  //ed25519_ref10_pubkey((*s)->pk, (*s)->sk);
+  *s = xmalloc(sizeof(struct eddsa_Sign));
+  eddsa_pubkey pk;
+  crypto_sign_seed_keypair(pk, (*s)->k, *priv);
 }
 
 void eddsa_Sign_free(struct eddsa_Sign ** s)
@@ -42,25 +43,27 @@ void eddsa_Sign_free(struct eddsa_Sign ** s)
 void eddsa_keygen(eddsa_privkey * priv, eddsa_pubkey * pub)
 {
   ident_hash h;
-  mnet_rand(h, 32);
-  mnet_hash(&h, *priv, 32);
-  //ed25519_ref10_pubkey(*pub, *priv);
+  mnet_rand(h, sizeof(ident_hash));
+  mnet_hash(&h, *priv, sizeof(eddsa_privkey));
+  eddsa_crypto_sign_privkey sk = {0};
+  assert(crypto_sign_seed_keypair(*pub, sk, *priv) != -1);
 }
 
 void eddsa_sign_data(struct eddsa_Sign * s, const uint8_t * data, const size_t len, eddsa_sig * sig)
 {
-  //ed25519_ref10_sign(*sig, data, len, s->sk, s->pk);
+  unsigned long long l;
+  assert(crypto_sign_detached(*sig, &l, data, len, s->k) != -1);
 }
 
 void eddsa_Sign_copy_key_data(struct eddsa_Sign * s, eddsa_privkey * k)
 {
-  memcpy(*k, s->sk, sizeof(eddsa_privkey));
+  // TODO: this assumes that the secret key is stored first
+  memcpy(*k, s->k, sizeof(eddsa_privkey));
 }
 
 int eddsa_verify_signature(struct eddsa_Verify * v, const uint8_t * data, const size_t len, eddsa_sig * sig)
 {
-  return 0;
-  //return ed25519_ref10_open(*sig, data, len, v->k) == 0;
+  return crypto_sign_verify_detached(*sig, data, len, v->k) != -1;
 }
 
 void eddsa_Verify_get_key(struct eddsa_Verify * v, uint8_t ** k)
