@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-void i2p_rand(uint8_t * data, size_t sz);
+void mnet_rand(uint8_t * data, size_t sz);
 
-uint32_t i2p_random();
+uint32_t mnet_random();
 
 #endif

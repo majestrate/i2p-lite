@@ -13,13 +13,6 @@ struct i2p_crypto_config
 
 #define default_crypto_config { 1, 0 }
 
-struct crypto_consts;
-
-extern struct crypto_consts * crypto;
-
-/** return 1 if aesni is enabled on runtime */
-int aesni_enabled();
-
 /** @brief initialize crypto subsytem */
 int i2p_crypto_init(struct i2p_crypto_config cfg);
 

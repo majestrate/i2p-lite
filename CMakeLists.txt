@@ -9,24 +9,18 @@ include(FindPackageHandleStandardArgs)
 include(GNUInstallDirs)
 
 pkg_check_modules(UV libuv)
-#pkg_check_modules(OPENSSL openssl)
-#pkg_check_modules(ZLIB zlib)
 pkg_check_modules(SODIUM libsodium)
 
 include_directories(${UV_INCLUDEDIR})
-#include_directories(${OPENSSL_INCLUDEDIR})
-#include_directories(${ZLIB_INCLUDEDIR})
 include_directories(${SODIUM_INCLUEDIR})
 
 include_directories(include)
 include_directories(contrib/include)
 
 file(GLOB LIBMNET_SRC "mnet/*.c")
-#file(GLOB REF10_SRC "contrib/ref10/*.c")
 
 add_executable(${EXE} "mrouter.c")
 add_library(mnet ${LIBMNET_SRC})
-#add_library(ref10 ${REF10_SRC})
 
 set(LIBS mnet ${UV_LIBRARIES} ${SODIUM_LIBRARIES} -ljemalloc)
 
