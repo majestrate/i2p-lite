@@ -1,8 +1,8 @@
-#ifndef I2PD_LOG_H_
-#define I2PD_LOG_H_
+#ifndef MNET_LOG_H_
+#define MNET_LOG_H_
 #include <stdint.h>
 
-#define I2P_CONFIG_LOG_LEVEL "i2p.log.level"
+#define MNET_CONFIG_LOG_LEVEL "mnet.log.level"
 
 // log debug spam
 #define L_DEBUG 1
@@ -41,21 +41,21 @@
 #define LOG_ALL (LOG_NET | LOG_CRYPTO | LOG_I2NP | LOG_NTCP | LOG_SSU | LOG_MAIN | LOG_CONFIG | LOG_ROUTER | LOG_NETDB | LOG_DATA | LOG_UTIL)
 
 /** initiailze logging */
-void i2p_log_init();
+void mnet_log_init();
 
-void i2p_log_set_level(int level);
-void i2p_log_set_scope(int scope);
+void mnet_log_set_level(int level);
+void mnet_log_set_scope(int scope);
 
 /** log function */
-void __i2p_log(int level, int lineno, const char * f, int scope, const char * fmt, ...);
+void __mnet_log(int level, int lineno, const char * f, int scope, const char * fmt, ...);
 
-void __i2p_debug_memory(int lineno, const char * f, int scope, const uint8_t * begin, const uint8_t * end);
+void __mnet_debug_memory(int lineno, const char * f, int scope, const uint8_t * begin, const uint8_t * end);
 
-#define i2p_error(...) __i2p_log(L_ERROR, __LINE__, __FILENAME__, __VA_ARGS__)
-#define i2p_warn(...) __i2p_log(L_WARN, __LINE__, __FILENAME__, __VA_ARGS__)
-#define i2p_info(...) __i2p_log(L_INFO, __LINE__, __FILENAME__, __VA_ARGS__)
-#define i2p_debug(...) __i2p_log(L_DEBUG, __LINE__, __FILENAME__, __VA_ARGS__)
-#define i2p_debug_memory(scope, begin, end)  __i2p_debug_memory(__LINE__, __FILENAME__, scope, begin, end)
+#define mnet_error(...) __mnet_log(L_ERROR, __LINE__, __FILENAME__, __VA_ARGS__)
+#define mnet_warn(...) __mnet_log(L_WARN, __LINE__, __FILENAME__, __VA_ARGS__)
+#define mnet_info(...) __mnet_log(L_INFO, __LINE__, __FILENAME__, __VA_ARGS__)
+#define mnet_debug(...) __mnet_log(L_DEBUG, __LINE__, __FILENAME__, __VA_ARGS__)
+#define mnet_debug_memory(scope, begin, end)  __mnet_debug_memory(__LINE__, __FILENAME__, scope, begin, end)
 
 
 #endif

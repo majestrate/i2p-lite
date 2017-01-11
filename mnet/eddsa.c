@@ -1,8 +1,8 @@
-#include <i2pd/eddsa.h>
-#include <i2pd/memory.h>
+#include <mnet/eddsa.h>
+#include <mnet/memory.h>
+#include <mnet/rand.h>
+#include <mnet/hash.h>
 #include <assert.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
 
 struct eddsa_Verify {
   eddsa_pubkey k;
@@ -41,9 +41,9 @@ void eddsa_Sign_free(struct eddsa_Sign ** s)
 
 void eddsa_keygen(eddsa_privkey * priv, eddsa_pubkey * pub)
 {
-  uint8_t k[32];
-  RAND_bytes(k, 32);
-  SHA256(k, 32, *priv);
+  ident_hash h;
+  mnet_rand(h, 32);
+  mnet_hash(&h, *priv, 32);
   //ed25519_ref10_pubkey(*pub, *priv);
 }
 

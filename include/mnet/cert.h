@@ -1,5 +1,5 @@
-#ifndef I2PD_CERT_H_
-#define I2PD_CERT_H_
+#ifndef MNET_CERT_H_
+#define MNET_CERT_H_
 
 #include <stdint.h>
 #include <unistd.h>
@@ -13,28 +13,28 @@
 #define I2P_CERT_TYPE_KEY 5
 
 
-struct i2p_cert;
+struct mnet_cert;
 
-void i2p_cert_new(struct i2p_cert ** c);
+void mnet_cert_new(struct mnet_cert ** c);
 /** @brief initialize from data */
-void i2p_cert_init(struct i2p_cert * c, uint8_t type, uint8_t * data, uint16_t len);
+void mnet_cert_init(struct mnet_cert * c, uint8_t type, uint8_t * data, uint16_t len);
 
 /** @brief read from file descriptor */
-int i2p_cert_read(struct i2p_cert * c, FILE * f);
+int mnet_cert_read(struct mnet_cert * c, FILE * f);
 
 /** @brief write to file descriptor */
-int i2p_cert_write(struct i2p_cert * c, FILE * f);
+int mnet_cert_write(struct mnet_cert * c, FILE * f);
 
 /** @brief read from buffer */
-uint8_t * i2p_cert_read_buffer(struct i2p_cert * c, uint8_t * d, size_t len);
+uint8_t * mnet_cert_read_buffer(struct mnet_cert * c, uint8_t * d, size_t len);
 
-void i2p_cert_free(struct i2p_cert ** c);
+void mnet_cert_free(struct mnet_cert ** c);
 
-uint8_t i2p_cert_type(struct i2p_cert * c);
+uint8_t mnet_cert_type(struct mnet_cert * c);
 
-uint8_t * i2p_cert_buffer(struct i2p_cert * c);
-uint16_t i2p_cert_buffer_length(struct i2p_cert * c);
-uint8_t * i2p_cert_data(struct i2p_cert * c);
-uint16_t i2p_cert_data_length(struct i2p_cert * c);
+uint8_t * mnet_cert_buffer(struct mnet_cert * c);
+uint16_t mnet_cert_buffer_length(struct mnet_cert * c);
+uint8_t * mnet_cert_data(struct mnet_cert * c);
+uint16_t mnet_cert_data_length(struct mnet_cert * c);
 
 #endif

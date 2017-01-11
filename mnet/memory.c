@@ -1,4 +1,4 @@
-#include <i2pd/memory.h>
+#include <mnet/memory.h>
 
 uint16_t buf16toh(const void *buf)
 {

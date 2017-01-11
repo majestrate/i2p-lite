@@ -1,10 +1,9 @@
-#ifndef I2PD_RI_H_
-#define I2PD_RI_H_
-#include <i2pd/datatypes.h>
-#include <i2pd/address.h>
-#include <i2pd/identity.h>
-#include <i2pd/i2np.h>
-#include <i2pd/elg.h>
+#ifndef MNET_RI_H_
+#define MNET_RI_H_
+#include <mnet/datatypes.h>
+#include <mnet/address.h>
+#include <mnet/identity.h>
+#include <mnet/garlic.h>
 
 #include <stdint.h>
 
@@ -13,10 +12,6 @@ struct router_info_config
 {
   /** iwp address info */
   struct iwp_config * iwp;
-  /** ntcp address info */
-  struct ntcp_config * ntcp;
-  /** ssu address info */
-  struct ssu_config * ssu;
   /** router caps, i.e. ORfX */
   char * caps;
   /** set to 1 if we should publish to netdb, otherwise set to 0 in which we won't publish to the network */
@@ -39,7 +34,7 @@ int router_info_load(struct router_info * ri, FILE * f);
 int router_info_verify(struct router_info * ri);
 
 /** @brief generate a new router info and sign it */
-void router_info_generate(struct i2p_identity_keys * k, struct router_info_config * cfg, struct router_info ** ri);
+void router_info_generate(struct mnet_identity_keys * k, struct router_info_config * cfg, struct router_info ** ri);
 
 /** @brief get this router info's caps section, if router info has no caps, caps is set to NULL, caller must free result when done */
 void router_info_get_caps(struct router_info * ri, char ** caps);
@@ -57,7 +52,7 @@ int router_info_write(struct router_info * ri, FILE * f);
 char * router_info_base64_ident(struct router_info * ri);
 
 /** @brief callback for iterating over all of a router info's addresses */
-typedef void (*router_info_addr_iter)(struct router_info *, struct i2p_addr *, void *);
+typedef void (*router_info_addr_iter)(struct router_info *, struct mnet_addr *, void *);
 
 /** @brief iterate over all this router info's provided addresses */
 void router_info_iter_addrs(struct router_info * ri, router_info_addr_iter i, void * u);
@@ -65,6 +60,6 @@ void router_info_iter_addrs(struct router_info * ri, router_info_addr_iter i, vo
 /** @brief convert this router info into a database store message */
 void router_info_to_dbsm(struct router_info * ri, struct dbs_msg ** msg);
 
-void router_info_get_identity(struct router_info * ri, struct i2p_identity ** ident);
+void router_info_get_identity(struct router_info * ri, struct mnet_identity ** ident);
 
 #endif

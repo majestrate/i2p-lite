@@ -1,5 +1,5 @@
-#ifndef BENCODE_H
-#define BENCODE_H
+#ifndef MNET_BENCODE_H
+#define MNET_BENCODE_H
 
 #include <stdio.h>
 #include <stdint.h>
@@ -148,4 +148,4 @@ ssize_t bencode_read_file(bencode_obj_t * o, FILE * f);
  */
 //uint8_t * bencode_read_buffer(bencode_obj_t * o, uint8_t * buf, size_t sz);
 
-#endif /* BENCODE_H */
+#endif /* MNET_BENCODE_H */

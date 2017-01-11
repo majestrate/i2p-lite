@@ -1,17 +1,17 @@
-#include <i2pd/address.h>
-#include <i2pd/encoding.h>
-#include <i2pd/log.h>
-#include <i2pd/memory.h>
-#include <i2pd/util.h>
+#include <mnet/address.h>
+#include <mnet/encoding.h>
+#include <mnet/log.h>
+#include <mnet/memory.h>
+#include <mnet/util.h>
 
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-void i2p_addr_process_dict(char * k, char * v, void * u)
+void mnet_addr_process_dict(char * k, char * v, void * u)
 {
-  struct i2p_addr * a = (struct i2p_addr * ) u;  
-  i2p_debug(LOG_DATA, "i2p address dict: %s = %s", k, v);
+  struct mnet_addr * a = (struct mnet_addr * ) u;  
+  mnet_debug(LOG_DATA, "address dict: %s = %s", k, v);
   if(!strcmp(k, "host")) {
     a->host = strdup(v);
     return;
@@ -23,7 +23,7 @@ void i2p_addr_process_dict(char * k, char * v, void * u)
   if(!strcmp(k, "key")) {
     // for ssu
     uint8_t * key = NULL;
-    size_t len = i2p_base64_decode_str(v, &key);
+    size_t len = mnet_base64_decode_str(v, &key);
     if (len == sizeof(pub_enc_key_t)) {
       memcpy(a->key, key, len);
     }
@@ -31,26 +31,19 @@ void i2p_addr_process_dict(char * k, char * v, void * u)
   }
 }
 
-uint8_t * i2p_addr_read_dict(struct i2p_addr ** addr, uint8_t * b, size_t l)
+uint8_t * mnet_addr_read_dict(struct mnet_addr ** addr, uint8_t * b, size_t l)
 {
-  (*addr) = xmalloc(sizeof(struct i2p_addr));
-  (*addr)->cost = *b;
-  b ++ ;
-  (*addr)->date = bufbe64toh(b);
-  b += sizeof(uint64_t);
-  uint8_t * d = read_i2pstring(b, l, &(*addr)->style);
-  i2p_debug(LOG_DATA, "address style %s", (*addr)->style);
-  return read_i2pdict(d, l + 1 + strlen((*addr)->style), i2p_addr_process_dict, (*addr));
+  return NULL;
 }
 
-void i2p_addr_free(struct i2p_addr ** addr)
+void mnet_addr_free(struct mnet_addr ** addr)
 {
   free((*addr)->style);
   free(*addr);
   *addr = NULL;
 }
 
-char * i2p_addr_port_str(struct i2p_addr * addr)
+char * mnet_addr_port_str(struct mnet_addr * addr)
 {
   char buf[10] = {0};
   snprintf(buf, sizeof(buf), "%d", ntohs(addr->port));

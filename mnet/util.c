@@ -1,7 +1,7 @@
-#include <i2pd/util.h>
-#include <i2pd/types.h>
-#include <i2pd/memory.h>
-#include <i2pd/log.h>
+#include <mnet/util.h>
+#include <mnet/types.h>
+#include <mnet/memory.h>
+#include <mnet/log.h>
 
 #include <assert.h>
 #include <dirent.h>
@@ -12,7 +12,7 @@
 #include <errno.h>
 
 char * path_join(const char * base, ...) {
-  i2p_filename path = {0};
+  mnet_filename path = {0};
   char * part = 0;
   int idx = 0;
   int i = 0;
@@ -51,7 +51,7 @@ int _is_file(char * path, void * u)
   (void) u;
   struct stat st;
   if(stat(path, &st) == -1) {
-    i2p_error(LOG_UTIL, "stat(%s): %s", path, strerror(errno));
+    mnet_error(LOG_UTIL, "stat(%s): %s", path, strerror(errno));
     return 0;
   }
   return S_ISREG(st.st_mode);
@@ -62,7 +62,7 @@ int _is_dir(char * path, void * u)
   (void) u;
   struct stat st; 
   if(stat(path, &st) == -1) {
-    i2p_error(LOG_UTIL, "stat(%s): %s", path, strerror(errno));
+    mnet_error(LOG_UTIL, "stat(%s): %s", path, strerror(errno));
     return 0;
   }
   return S_ISDIR(st.st_mode);
@@ -82,7 +82,7 @@ int iterate_all_with_filter(char * path, dir_iterator i, dir_filter f, void * u)
 {
   DIR * d = opendir(path);
   if (!d) {
-    i2p_error(LOG_UTIL, "failed to open %s", path);
+    mnet_error(LOG_UTIL, "failed to open %s", path);
     return 0;
   }
 
@@ -114,7 +114,7 @@ uint8_t * read_i2pstring(uint8_t * buf, size_t len, char ** str)
   if(sz >= len) return NULL; // overflow
   *str = mallocx(sz+1, MALLOCX_ZERO);
   memcpy(*str, buf, sz);
-  i2p_debug(LOG_UTIL, "read string %s size %d", *str, sz);
+  mnet_debug(LOG_UTIL, "read string %s size %d", *str, sz);
   return buf + sz;
 }
 
@@ -125,10 +125,10 @@ uint8_t * read_i2pdict(uint8_t * buf, size_t len, i2pdict_reader r, void * u)
   uint16_t sz = bufbe16toh(buf);
   
   if(sz > len) {
-    i2p_error(LOG_UTIL, "read_i2pdict() overflow: %d > %d", sz, len);
+    mnet_error(LOG_UTIL, "read_i2pdict() overflow: %d > %d", sz, len);
     return NULL; // overflow
   }
-  i2p_debug(LOG_UTIL, "read dict of size %d", sz);
+  mnet_debug(LOG_UTIL, "read dict of size %d", sz);
   
   uint8_t s = 0;
   buf += sizeof(uint16_t);

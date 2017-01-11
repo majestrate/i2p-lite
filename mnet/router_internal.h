@@ -1,9 +1,9 @@
-#ifndef I2PD_ROUTER_INTERNAL_H_
-#define I2PD_ROUTER_INTERNAL_H_
+#ifndef MNET_ROUTER_INTERNAL_H_
+#define MNET_ROUTER_INTERNAL_H_
 #include <uv.h>
-#include <i2pd/router.h>
-#include <i2pd/transport.h>
-#include <i2pd/tunnels.h>
+#include <mnet/router.h>
+#include <mnet/transport.h>
+#include <mnet/tunnels.h>
 
 #define ROUTER_CONTEXT_TICK_INTERVAL 5000
 
@@ -22,10 +22,8 @@ struct router_context
   char * router_info;
   // file for our router private keys
   char * router_keys;
-  // file for floodfill boostrap, don't free
-  const char * floodfill;
-  // url for reseed, don't free
-  const char * reseed;
+  // file for node boostrap, don't free
+  const char * bootstrap;
 
   // ipv4 addr/port
   char * external_addr4;
@@ -35,17 +33,15 @@ struct router_context
   char * external_port6;
   
   // network database storage
-  struct i2p_netdb * netdb;  
+  struct mnet_netdb * netdb;  
   // transport layer
-  struct i2np_transport * transport;
+  struct mnet_garlic_transport * transport;
   // tunnel routing context
-  struct i2np_tunnel_context * tunnels;
+  struct mnet_garlic_tunnel_context * tunnels;
   // exploritory tunnel pool
-  struct i2np_tunnel_pool * exploritory_pool;
-  // ntcp server
-  struct ntcp_server * ntcp;
+  struct mnet_garlic_tunnel_pool * exploritory_pool;
   // our router identity private keys
-  struct i2p_identity_keys * privkeys;
+  struct mnet_identity_keys * privkeys;
   // our router info
   struct router_info * our_ri;
   // our ident hash

@@ -1,5 +1,5 @@
-#include <i2pd/log.h>
-#include <i2pd/memory.h>
+#include <mnet/log.h>
+#include <mnet/memory.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -14,23 +14,23 @@ struct log_ctx
 
 static struct log_ctx * log;
 
-void i2p_log_init()
+void mnet_log_init()
 {
-  log = mallocx(sizeof(struct log_ctx), MALLOCX_ZERO);
+  log = xmalloc(sizeof(struct log_ctx));
   log->f = stderr;
 }
 
-void i2p_log_set_level(int level)
+void mnet_log_set_level(int level)
 {
   log->level = level;
 }
 
-void i2p_log_set_scope(int scope)
+void mnet_log_set_scope(int scope)
 {
   log->scope = scope;
 }
 
-void i2p_log_end()
+void mnet_log_end()
 {
   // close file if log file
   if(log->f != stderr &&  log->f != stdout)
@@ -39,7 +39,7 @@ void i2p_log_end()
   log = NULL;
 }
 
-void __i2p_log(int level, int lineno, const char * f, int scope, const char * fmt, ...)
+void __mnet_log(int level, int lineno, const char * f, int scope, const char * fmt, ...)
 {
   int color;
   va_list args;
@@ -77,7 +77,7 @@ void __i2p_log(int level, int lineno, const char * f, int scope, const char * fm
 }
 
 // dump memory
-void __i2p_debug_memory(int line, const char * f, int scope, const uint8_t * begin, const uint8_t * end)
+void __mnet_debug_memory(int line, const char * f, int scope, const uint8_t * begin, const uint8_t * end)
 {
   uint8_t * p;
   size_t c = 1;

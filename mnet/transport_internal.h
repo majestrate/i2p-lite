@@ -1,17 +1,17 @@
-#ifndef I2PD_TRANSPORT_INTERNAL_H_
-#define I2PD_TRANSPORT_INTERNAL_H_
+#ifndef MNET_TRANSPORT_INTERNAL_H_
+#define MNET_TRANSPORT_INTERNAL_H_
 
-#include <i2pd/transport.h>
+#include <mnet/transport.h>
 
-#ifndef MAX_I2NP_TRANSPORTS 
-#define MAX_I2NP_TRANSPORTS 3
+#ifndef MAX_GARLIC_TRANSPORTS 
+#define MAX_GARLIC_TRANSPORTS 3
 #endif
 
-struct i2np_transport
+struct mnet_garlic_transport
 {
   uv_loop_t * loop;
   struct router_context * router;
-  struct i2np_transport_impl links[MAX_I2NP_TRANSPORTS];
+  struct mnet_garlic_transport_impl links[MAX_GARLIC_TRANSPORTS];
 };
 
 

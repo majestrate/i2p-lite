@@ -1,10 +1,9 @@
-#ifndef I2PD_RAND_H_
-#define I2PD_RAND_H_
-#include <stdint.h>
-#include <stdlib.h>
+#ifndef MNET_RAND_H_
+#define MNET_RAND_H_
 
-void mnet_rand(uint8_t * data, size_t sz);
+#include <sodium/randombytes.h>
 
-uint32_t mnet_random();
+#define mnet_rand randombytes_buf
+#define mnet_random randombytes_random
 
 #endif

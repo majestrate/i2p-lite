@@ -1,9 +1,9 @@
-#ifndef I2PD_CRYPTO_H_
-#define I2PD_CRYPTO_H_
+#ifndef MNET_CRYPTO_H_
+#define MNET_CRYPTO_H_
 
-#define I2P_CONFIG_CRYPTO_CHECK "i2p.crypto.check"
+#define MNET_CONFIG_CRYPTO_CHECK "i2p.crypto.check"
 
-struct i2p_crypto_config
+struct mnet_crypto_config
 {
   // do crypto sanity check
   int sanity_check;
@@ -14,9 +14,9 @@ struct i2p_crypto_config
 #define default_crypto_config { 1, 0 }
 
 /** @brief initialize crypto subsytem */
-int i2p_crypto_init(struct i2p_crypto_config cfg);
+int mnet_crypto_init(struct mnet_crypto_config cfg);
 
 /** @brief deinitialize crypto subsystem */
-void i2p_crypto_done();
+void mnet_crypto_done();
 
 #endif

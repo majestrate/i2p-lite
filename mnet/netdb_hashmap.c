@@ -1,5 +1,5 @@
 /*
-  netdb_hashmap.c -- i2p netdb hashmap based of generic hash table by Janne Kulmala
+  netdb_hashmap.c -- netdb hashmap based of generic hash table by Janne Kulmala
  
   Copyright (c) 2011, Janne Kulmala <janne.t.kulmala@tut.fi>.
   All rights reserved.
@@ -31,7 +31,7 @@
  */
 
 #include "netdb_hashmap.h"
-#include <i2pd/memory.h>
+#include <mnet/memory.h>
 
 #define BUCKETS 128
 

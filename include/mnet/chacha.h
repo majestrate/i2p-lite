@@ -1,7 +1,7 @@
-#ifndef I2PD_CHACHA_H_
-#define I2PD_CHACHA_H_
+#ifndef MNET_CHACHA_H_
+#define MNET_CHACHA_H_
 
-#include <i2pd/datatypes.h>
+#include <mnet/datatypes.h>
 
 /**
    @brief tunnel version 2 encryption/decryption context providing message authentication

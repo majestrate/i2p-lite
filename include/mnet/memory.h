@@ -1,7 +1,7 @@
-#ifndef I2PD_MEMORY_H_
-#define I2PD_MEMORY_H_
+#ifndef MNET_MEMORY_H_
+#define MNET_MEMORY_H_
 #include <jemalloc/jemalloc.h>
-#include "i2pendian.h"
+#include <mnet/endian.h>
 
 #define xmalloc(sz) mallocx(sz, MALLOCX_ZERO)
 

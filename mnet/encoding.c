@@ -1,30 +1,30 @@
-#include <i2pd/encoding.h>
-#include <i2pd/memory.h>
+#include <mnet/encoding.h>
+#include <mnet/memory.h>
 #include <stdlib.h>
 
 // implementation lifted from i2pd
 
-size_t i2p_base64_encoding_buffer_size (size_t input_size) 
+size_t mnet_base64_encoding_buffer_size (size_t input_size) 
 {
   div_t d = div (input_size, 3);
   if (d.rem) d.quot++;
   return 4*d.quot;
 }
 
-char * i2p_base64_encode_str(uint8_t * buf, size_t len)
+char * mnet_base64_encode_str(uint8_t * buf, size_t len)
 {
-  size_t outlen = i2p_base64_encoding_buffer_size(len);
+  size_t outlen = mnet_base64_encoding_buffer_size(len);
   char * str = xmalloc(outlen+1);
-  i2p_base64_encode(buf, len, str, outlen);
+  mnet_base64_encode(buf, len, str, outlen);
   return str;
 }
 
-size_t i2p_base64_decode_str(char * in, uint8_t ** out)
+size_t mnet_base64_decode_str(char * in, uint8_t ** out)
 {
   size_t inlen = strlen(in);
   // TODO: buffer is uneedingly too big
   uint8_t * temp = xmalloc(inlen);
-  size_t outlen = i2p_base64_decode(in, inlen, temp, inlen);
+  size_t outlen = mnet_base64_decode(in, inlen, temp, inlen);
   if (outlen) {
     *out = temp;
   } else {
@@ -55,7 +55,7 @@ static const char T64[64] = {
 
 static char P64 = '='; 
 
-const char * I2P_BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-~";
+const char * MNET_BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-~";
 
 /*
  * Reverse Substitution Table (built in run time)
@@ -74,7 +74,7 @@ static void iT64Build()
 }
 
 size_t                              /* Number of output bytes */
-i2p_base64_decode ( 
+mnet_base64_decode ( 
   char * InBuffer,           /* BASE64 encoded buffer */
   size_t    InCount,          /* Number of input bytes */
   uint8_t  * OutBuffer,	/* output buffer length */ 	
@@ -130,7 +130,7 @@ i2p_base64_decode (
 
 
 size_t                                /* Number of bytes in the encoded buffer */
-i2p_base64_encode(uint8_t * InBuffer,           /* Input buffer, binary data */
+mnet_base64_encode(uint8_t * InBuffer,           /* Input buffer, binary data */
                   size_t    InCount,              /* Number of bytes in the input buffer */ 
                   char  * OutBuffer,          /* output buffer */
                   size_t len			   /* length of output buffer */	             
@@ -199,7 +199,7 @@ i2p_base64_encode(uint8_t * InBuffer,           /* Input buffer, binary data */
 
 
 
-size_t i2p_base32_encode (uint8_t * inBuf, size_t len, char * outBuf, size_t outLen)
+size_t mnet_base32_encode (uint8_t * inBuf, size_t len, char * outBuf, size_t outLen)
 {
   size_t ret = 0, pos = 1;
   int bits = 8, tmp = inBuf[0];

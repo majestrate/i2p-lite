@@ -1,13 +1,12 @@
-#ifndef I2PD_ROUTER_H__
-#define I2PD_ROUTER_H__
-#include <i2pd/netdb.h>
-#include <i2pd/ntcp.h>
-#include <i2pd/ssu.h>
-#include <i2pd/types.h>
+#ifndef MNET_ROUTER_H__
+#define MNET_ROUTER_H__
+#include <mnet/netdb.h>
+#include <mnet/iwp.h>
+#include <mnet/types.h>
 
 #include <uv.h>
 
-#define I2P_CONFIG_ROUTER_DIR "i2p.router.dir"
+#define MNET_CONFIG_ROUTER_DIR "mnet.router.dir"
 
 /** @brief parameters for initializing a router context */
 struct router_context_config
@@ -17,22 +16,16 @@ struct router_context_config
   uv_loop_t * loop;
   
   /** @brief root data directory */
-  i2p_filename datadir;
+  char * datadir;
 
-  /** @brief path to floodfill router info to try to bootstrap from */
-  char * floodfill;
-
-  /** @brief url to reseed server to try to bootstrap from */
-  char * reseed_url;
+  /** @brief path to router info to try to bootstrap from */
+  char * bootstrap;
   
-  /** @brief config for ntcp */
-  struct ntcp_config ntcp;
-
-  /** @brief config for ssu */
-  struct ssu_config ssu;
+  /** @brief config for iwp */
+  struct iwp_config iwp;
 };
 
-#define default_router_context_config { NULL, {0}, NULL, NULL, default_ntcp_config, default_ssu_config }
+#define default_router_context_config { NULL, NULL, NULL, default_iwp_config }
 
 struct router_context;
 
@@ -53,7 +46,7 @@ void router_context_update_router_info(struct router_context * ctx, struct route
 /** @brief try bootstrapping from floodfill */
 void router_context_try_bootstrap_from_router(struct router_context * ctx, struct router_info * ri);
 
-void router_context_get_identity(struct router_context * ctx, struct i2p_identity ** ident);
+void router_context_get_identity(struct router_context * ctx, struct mnet_identity ** ident);
 
 /** @brief start reseed by url, if i2p domain and no peers this does nothing */
 void router_context_try_reseed_from(struct router_context * ctx, const char * url);
@@ -67,6 +60,6 @@ typedef void (*router_context_close_hook)(struct router_context *, void *);
 void router_context_close(struct router_context * ctx, router_context_close_hook hook);
 
 /** @brief find i2np message router that handles an i2np message given the type of i2np message */
-struct i2np_message_router * router_context_find_message_router(struct router_context * ctx, uint8_t type);
+struct mnet_garlic_message_router * router_context_find_message_router(struct router_context * ctx, uint8_t type);
 
 #endif

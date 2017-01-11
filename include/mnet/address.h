@@ -1,12 +1,12 @@
-#ifndef I2PD_ADDRESS_H_
-#define I2PD_ADDRESS_H_
-#include <i2pd/datatypes.h>
-#include <i2pd/types.h>
+#ifndef MNET_ADDRESS_H_
+#define MNET_ADDRESS_H_
+#include <mnet/datatypes.h>
+#include <mnet/types.h>
 #include <unistd.h>
 
 
 /** @brief network address */
-struct i2p_addr
+struct mnet_addr
 {
   char * style;
   char * host;
@@ -16,12 +16,12 @@ struct i2p_addr
   pub_enc_key_t key;
 };
 
-/** @brief read i2p addr from memory */
-uint8_t * i2p_addr_read_dict(struct i2p_addr ** addr, uint8_t * b, size_t l);
-/** @brief free an i2p addr */
-void i2p_addr_free(struct i2p_addr ** addr);
+/** @brief read addr from memory */
+uint8_t * mnet_addr_read_dict(struct mnet_addr ** addr, uint8_t * b, size_t l);
+/** @brief free an addr */
+void mnet_addr_free(struct mnet_addr ** addr);
 
 /** @brief get string represenation of port, caller must free return value*/
-char * i2p_addr_port_str(struct i2p_addr * addr);
+char * mnet_addr_port_str(struct mnet_addr * addr);
 
 #endif

@@ -6,8 +6,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
-#include <i2pd/bencode.h>
-#include <i2pd/memory.h>
+#include <mnet/bencode.h>
+#include <mnet/memory.h>
 
 struct bencode_list_node
 {

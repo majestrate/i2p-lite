@@ -1,5 +1,5 @@
 /*
-  netdb_hashmap.h -- i2p netdb hashmap implementation based off Janne Kulama's
+  netdb_hashmap.h -- netdb hashmap implementation based off Janne Kulama's
                      generic hashmap implementation
  
   Copyright (c) 2011, Janne Kulmala <janne.t.kulmala@tut.fi>.
@@ -31,12 +31,12 @@
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _I2PD_NETDB_HASHMAP_H_
-#define _I2PD_NETDB_HASHMAP_H_
+#ifndef _MNET_NETDB_HASHMAP_H_
+#define _MNET_NETDB_HASHMAP_H_
 
-#include <i2pd/datatypes.h>
-#include <i2pd/netdb.h>
-#include <i2pd/ri.h>
+#include <mnet/datatypes.h>
+#include <mnet/netdb.h>
+#include <mnet/ri.h>
 
 struct netdb_hashmap;
 
