@@ -117,8 +117,8 @@ int main(int argc, char * argv[])
   while(rounds < 200000) {
     mnet_info(LOG_MAIN, "benchmark chacha %lu rounds", rounds);
     benchmark_chacha(rounds);
-    mnet_info(LOG_MAIN, "benchmark eddsa %lu rounds", rounds);
-    benchmark_eddsa(rounds);
+    mnet_info(LOG_MAIN, "benchmark eddsa %lu rounds", rounds / 10);
+    benchmark_eddsa(rounds / 10);
     rounds *= 2;
   }
   
