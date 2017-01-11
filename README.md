@@ -4,8 +4,6 @@
 ## requirements
 
 * libuv 1.8.x
-* openssl or libressl
-* zlib
 * jemalloc
 * libsodium
 
