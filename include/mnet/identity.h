@@ -28,6 +28,8 @@ size_t mnet_identity_siglen(struct mnet_identity * i);
 int mnet_identity_verify_data(struct mnet_identity * i, uint8_t * in, size_t inlen, uint8_t *sig);
 void mnet_identity_hash(struct mnet_identity * i, ident_hash * ident);
 uint16_t mnet_identity_sigtype(struct mnet_identity * i);
+char * mnet_identity_to_base64(struct mnet_identity * i);
+int mnet_identity_from_base64(struct mnet_identity * i, char * str);
 
 void mnet_identity_clone(struct mnet_identity * i, struct mnet_identity ** clone);
 

@@ -2,6 +2,7 @@
 #include <mnet/memory.h>
 #include <mnet/rand.h>
 #include <mnet/hash.h>
+#include <mnet/log.h>
 #include <assert.h>
 
 typedef uint8_t eddsa_crypto_sign_privkey[crypto_sign_SECRETKEYBYTES];
@@ -43,10 +44,12 @@ void eddsa_Sign_free(struct eddsa_Sign ** s)
 void eddsa_keygen(eddsa_privkey * priv, eddsa_pubkey * pub)
 {
   ident_hash h;
-  mnet_rand(h, sizeof(ident_hash));
-  mnet_hash(&h, *priv, sizeof(eddsa_privkey));
+  ident_hash k;
+  mnet_rand(k, sizeof(ident_hash));
+  mnet_hash(&h, k, sizeof(eddsa_privkey));
   eddsa_crypto_sign_privkey sk = {0};
-  assert(crypto_sign_seed_keypair(*pub, sk, *priv) != -1);
+  assert(crypto_sign_seed_keypair(*pub, sk, h) != -1);
+  memcpy(*priv, h, sizeof(eddsa_privkey));
 }
 
 void eddsa_sign_data(struct eddsa_Sign * s, const uint8_t * data, const size_t len, eddsa_sig * sig)
@@ -57,8 +60,9 @@ void eddsa_sign_data(struct eddsa_Sign * s, const uint8_t * data, const size_t l
 
 void eddsa_Sign_copy_key_data(struct eddsa_Sign * s, eddsa_privkey * k)
 {
+  uint8_t * d = *k;
   // TODO: this assumes that the secret key is stored first
-  memcpy(*k, s->k, sizeof(eddsa_privkey));
+  memcpy(d, s->k, sizeof(eddsa_privkey));
 }
 
 int eddsa_verify_signature(struct eddsa_Verify * v, const uint8_t * data, const size_t len, eddsa_sig * sig)

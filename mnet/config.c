@@ -39,7 +39,7 @@ static int is_emtpy_line(char * str)
   return *str == '\n';
 }
 
-// entry in i2p config
+// entry in config
 struct mnet_config_entry
 {
   char * name;
@@ -53,18 +53,18 @@ struct mnet_config
   size_t size;
 };
 
-/** @brief allocate i2p config structure */
+/** @brief allocate config structure */
 static void mnet_config_alloc(struct mnet_config ** cfg)
 {
-  *cfg = mallocx(sizeof(struct mnet_config), MALLOCX_ZERO);
+  *cfg = xmalloc(sizeof(struct mnet_config));
 }
 
-/** @brief append key/value pair to i2p config */
+/** @brief append key/value pair to config */
 static void mnet_config_append_entry(struct mnet_config * cfg, char * name, char * value)
 {
   struct mnet_config_entry * entry;
   size_t idx = cfg->size;
-  entry = mallocx(sizeof(struct mnet_config_entry), MALLOCX_ZERO);
+  entry = xmalloc(sizeof(struct mnet_config_entry));
   entry->name = strdup(name);
   entry->value = strdup(value);
   entry->prev = cfg->list;
@@ -176,14 +176,14 @@ int mnet_config_gen(char * filepath)
   mnet_config_alloc(&c);
 
   char * home = getenv("HOME");
-  char * datadir = path_join("/", "usr", "lib", "i2p", 0);
+  char * datadir = path_join("/", "usr", "lib", "mnet", 0);
   if(home)
-    datadir = path_join(home, ".config", "i2p", 0);
+    datadir = path_join(home, ".config", "mnet", 0);
   
   // put default settings
   mnet_config_append_entry(c, MNET_CONFIG_CRYPTO_CHECK, "1");
-  mnet_config_append_entry(c, "i2p.datadir", datadir);
-  mnet_config_append_entry(c, MNET_CONFIG_LOG_LEVEL, "2");
+  mnet_config_append_entry(c, "mnet.datadir", datadir);
+  mnet_config_append_entry(c, MNET_CONFIG_LOG_LEVEL, "1");
 
   
   mnet_config_for_each(c, mnet_config_iter_write, f);

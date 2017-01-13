@@ -144,7 +144,7 @@ int main(int argc, char * argv[])
   mnet_info(LOG_MAIN, "M router context initialize");
   // init router context
   router_context_new(&router, config.router);
-  
+  mnet_debug(LOG_MAIN, "M router context made, load it up");
   if(router_context_load(router))
   {
     mnet_info(LOG_MAIN, "M router context loaded up");

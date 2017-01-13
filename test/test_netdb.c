@@ -66,7 +66,7 @@ void process_netdb_entry(ident_hash h, struct router_info * ri, void * u)
 int main(int argc, char * argv[])
 {
   if(argc != 2) {
-    printf("usage: %s /path/to/netDb\n", argv[0]);
+    printf("usage: %s /path/to/nodes\n", argv[0]);
     return 1;
   }
 
@@ -80,7 +80,7 @@ int main(int argc, char * argv[])
   
   mnet_debug(LOG_MAIN, "starting netdb test");
   
-  struct mnet_netdb * db;
+  struct mnet_netdb * db = NULL;
   mnet_netdb_new(&db, argv[1]);
 
   int result;

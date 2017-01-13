@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <mnet/transport.h>
 #include <mnet/garlic.h>
+#include <mnet/bencode.h>
 
 /**
    IWP -- invisible wire protocol
@@ -11,14 +12,17 @@
 
 struct iwp_config
 {
+  char * pubkey;
   char * addr;
   uint16_t port;
   uint16_t mtu;
 };
 
-#define default_iwp_config {NULL, 0, 1280}
+#define default_iwp_config {NULL, NULL, 0, 1280}
 
 void iwp_config_new(struct iwp_config ** cfg);
+int iwp_config_load_dict(struct iwp_config * cfg, bencode_obj_t d);
+void iwp_config_store_dict(struct iwp_config * cfg, bencode_obj_t d);
 void iwp_config_free(struct iwp_config ** cfg);
 
 /**

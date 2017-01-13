@@ -44,7 +44,7 @@ FILE * netdb_open_file(struct mnet_netdb * db, ident_hash ident, const char * mo
   if(snprintf(skipdir, sizeof(skipdir), "r%c", base64[0]) == -1)
     return f;
     
-  if(snprintf(buf, sizeof(buf), "routerInfo-r%s.dat", base64) == -1)
+  if(snprintf(buf, sizeof(buf), "node-r%s.dat", base64) == -1)
     return f;
   
   fpath = path_join(db->rootdir, skipdir, buf, 0);

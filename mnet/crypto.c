@@ -8,11 +8,11 @@
 
 static int eddsa_test()
 {
-  int ret;
+  int ret = 0;
   uint8_t data[1024] = {0};
   
-  struct eddsa_Sign * s;
-  struct eddsa_Verify * v;
+  struct eddsa_Sign * s = NULL;
+  struct eddsa_Verify * v = NULL;
   
   eddsa_sig sig = {0};
 
@@ -29,7 +29,6 @@ static int eddsa_test()
   mnet_rand(data, sizeof(data));
 
   eddsa_sign_data(s, data, sizeof(data), &sig);
-
   ret = eddsa_verify_signature(v, data, sizeof(data), &sig);
   
   eddsa_Sign_free(&s);

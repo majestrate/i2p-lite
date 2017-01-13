@@ -21,7 +21,6 @@ struct router_info_config
 void router_info_config_new(struct router_info_config ** cfg);
 void router_info_config_free(struct router_info_config ** cfg);
 
-
 struct router_info;
 
 void router_info_new(struct router_info ** ri);

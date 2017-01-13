@@ -70,6 +70,7 @@ int router_context_load(struct router_context * ctx)
       return 0;
     }
   }
+  mnet_debug(LOG_ROUTER, "data directory ensured at %s", ctx->data_dir);
   if(!check_file(ctx->router_keys)) {
     // no router.keys
     mnet_info(LOG_ROUTER, "%s not found, regenerating router keys", ctx->router_keys);
@@ -209,11 +210,16 @@ int router_context_regenerate_identity(struct router_context * ctx, uint16_t sig
 {
   int res = 0;
   struct mnet_identity_keys * k = NULL;
-  FILE * f = fopen(ctx->router_keys, "w");
+  mnet_debug(LOG_ROUTER, "open %s for router keys", ctx->router_keys);
+  FILE * f = fopen(ctx->router_keys, "w+");
   if(!f) return 0;
   mnet_identity_keys_new(&k);
   mnet_identity_keys_generate(k, sigtype);
-  if(mnet_identity_keys_write(k, f)) res = 1;
+  if(mnet_identity_keys_write(k, f)) {
+    res = 1;
+    if(ctx->privkeys) mnet_identity_keys_free(&ctx->privkeys);
+    ctx->privkeys = k;
+  }
   fclose(f);
   return res;
 }

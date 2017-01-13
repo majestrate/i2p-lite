@@ -6,6 +6,7 @@
 #include <mnet/log.h>
 #include <mnet/memory.h>
 #include <mnet/bencode.h>
+#include <mnet/encoding.h>
 #include <string.h>
 #include <errno.h>
 
@@ -48,12 +49,26 @@ uint8_t * mnet_identity_read_buffer(struct mnet_identity * i, uint8_t * in, size
     return NULL;
   }
   memcpy(ed_pub, in, sizeof(eddsa_pubkey));
+  if(i->eddsa) eddsa_Verify_free(&i->eddsa);
+  eddsa_Verify_new(&i->eddsa, &ed_pub);
   in += sizeof(eddsa_pubkey);
 
   if(i->cert) mnet_cert_free(&i->cert); // free if already there
 
   mnet_cert_new(&i->cert);
   return mnet_cert_read_buffer(i->cert, in, len - sizeof(eddsa_pubkey));
+}
+
+int mnet_identity_from_base64(struct mnet_identity * i, char * str)
+{
+  int ret = 0;
+  uint8_t * data = NULL;
+  size_t sz = mnet_base64_decode_str(str, &data);
+  if(sz) {
+    data = mnet_identity_read_buffer(i, data, sz);
+    ret = data != NULL;
+  }
+  return ret;
 }
 
 int mnet_identity_write(struct mnet_identity * i, FILE * f)
@@ -119,6 +134,24 @@ void mnet_identity_hash(struct mnet_identity * i, ident_hash * h)
   mnet_hasher_free(&hash);
 }
 
+char * mnet_identity_to_base64(struct mnet_identity * i)
+{
+  uint8_t data[128] = {0};
+  uint8_t * pubkey = NULL;
+  uint8_t * certdata = NULL;
+  size_t sz = 0;
+  eddsa_Verify_get_key(i->eddsa, &pubkey);
+  memcpy(data, pubkey, sizeof(eddsa_pubkey));
+  certdata = mnet_cert_buffer(i->cert);
+  sz = mnet_cert_buffer_length(i->cert);
+  if (sz + sizeof(eddsa_pubkey) <= sizeof(data)) {
+    memcpy(data, certdata, sz);
+    sz += sizeof(eddsa_pubkey);
+    return mnet_base64_encode_str(data, sz);
+  }
+  return NULL;
+}
+
 struct mnet_identity_keys
 {
   struct mnet_identity * ident;
@@ -180,6 +213,7 @@ static void mnet_identity_keys_iter_dict(bencode_obj_t p, const char * k, bencod
         eddsa_privkey privkey = {0};
         memcpy(privkey, key, sizeof(eddsa_privkey));
         eddsa_Sign_new(&ctx->k->eddsa, &privkey);
+        mnet_debug(LOG_DATA, "Found private key in identity keys");
       }
       free(key);
     }
@@ -190,10 +224,6 @@ static void mnet_identity_keys_iter_dict(bencode_obj_t p, const char * k, bencod
 int mnet_identity_keys_read(struct mnet_identity_keys * k, FILE * f)
 {
   eddsa_privkey ed_priv = {0};
-  // free identity if already allocated
-  if(k->ident) mnet_identity_free(&k->ident);
-  // free signer if already allocated
-  if(k->eddsa) eddsa_Sign_free(&k->eddsa);
 
   bencode_obj_t benc = NULL;
   if(bencode_read_file(&benc, f) == -1) {
@@ -208,6 +238,10 @@ int mnet_identity_keys_read(struct mnet_identity_keys * k, FILE * f)
   };
   if(bencode_obj_is_dict(benc)) {
     // yey it's a dict
+    // free identity if already allocated
+    if(k->ident) mnet_identity_free(&k->ident);
+    // free signer if already allocated
+    if(k->eddsa) eddsa_Sign_free(&k->eddsa);
     bencode_obj_iter_dict(benc, mnet_identity_keys_iter_dict, &ctx);
     // set res to be if we succeeded or not
     res = ctx.success == 1;
@@ -222,8 +256,11 @@ int mnet_identity_keys_write(struct mnet_identity_keys * k, FILE * f)
   bencode_obj_t key = NULL;
   int res = 0;
   eddsa_privkey privkey = {0};
-
-  if(!k->eddsa) return res; // no key data
+  mnet_debug(LOG_DATA, "write identity keys to file");
+  if(!k->eddsa) {
+    mnet_error(LOG_DATA, "identity keys don't have private key data");
+    return res; // no key data
+  }
 
   eddsa_Sign_copy_key_data(k->eddsa, &privkey);
 

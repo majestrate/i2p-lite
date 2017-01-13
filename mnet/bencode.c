@@ -6,6 +6,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include <errno.h>
+#include <mnet/log.h>
 #include <mnet/bencode.h>
 #include <mnet/memory.h>
 
@@ -85,8 +87,9 @@ void bencode_obj_str(bencode_obj_t * o, const uint8_t * str, size_t sz)
   if(sz)
   {
     (*o)->str->sz = sz;
-    (*o)->str->data = xmalloc(sz);
+    (*o)->str->data = xmalloc(sz + 1);
     memcpy((*o)->str->data, str, sz);
+    (*o)->str->data[sz] = 0; // for null termination (just in case)
   }
 }
 
@@ -115,6 +118,7 @@ void bencode_obj_iter_dict(bencode_obj_t o, bencode_obj_dict_iter i, void * u)
 {
   struct bencode_dict_node * node = o->dict;
   while(node) {
+    mnet_debug(LOG_DATA, "dict k=%s next=%x", node->key.data, node->next);
     if(node->key.data && node->val)
       i(o, node->key.data, node->val, u);
     node = node->next;
@@ -123,27 +127,25 @@ void bencode_obj_iter_dict(bencode_obj_t o, bencode_obj_dict_iter i, void * u)
 
 void bencode_obj_dict_set(bencode_obj_t d, const char * k, bencode_obj_t v)
 {
+  mnet_debug(LOG_DATA, "dict set %s = %x", k, v);
   bencode_obj_t val = NULL;
   bencode_obj_clone(v, &val);
   struct bencode_dict_node * curr = d->dict;
-  struct bencode_dict_node * prev = NULL;
-  while(curr) {
-    if(!curr->key.data) break;
-    if(strcmp(k, curr->key.data) < 0) break;
-    prev = curr;
+  struct bencode_dict_node * next = curr->next;
+  while(next) {
+    if(strcmp(next->key.data, k) > 0) {
+      break;
+    }
+    next = curr->next;
     curr = curr->next;
   }
+
   struct bencode_dict_node * node = xmalloc(sizeof(struct bencode_dict_node));
   node->key.data = strdup(k);
-  node->key.sz = strlen(k);
+  node->key.sz = strlen(k) + 1;
   node->val = val;
-  if(prev) {
-    prev->next = node;
-    node->next = curr;
-  } else {
-    curr->next = node;
-    node->next = NULL;
-  }
+  curr->next = node;
+  node->next = next;
 }
 
 int bencode_obj_is_list(bencode_obj_t o)
@@ -178,24 +180,19 @@ static void _bencode_dict_copy(bencode_obj_t o, const char * k, bencode_obj_t v,
 
 void bencode_obj_clone(bencode_obj_t o, bencode_obj_t * clone)
 {
+  bencode_obj_t c = NULL;
   if(o->list) {
-    bencode_obj_list(clone);
-    bencode_obj_iter_list(o, _bencode_list_copy, *clone);
-    return;
+    bencode_obj_list(&c);
+    bencode_obj_iter_list(o, _bencode_list_copy, c);
+  } else if(o->dict) {
+    bencode_obj_dict(&c);
+    bencode_obj_iter_dict(o, _bencode_dict_copy, c);
+  } else if(o->integer) {
+    bencode_obj_int(&c, *o->integer);
+  } else if(o->str) {
+    bencode_obj_str(&c, o->str->data, o->str->sz);
   }
-  if(o->dict) {
-    bencode_obj_dict(clone);
-    bencode_obj_iter_dict(o, _bencode_dict_copy, *clone);
-    return;
-  }
-  if(o->integer) {
-    bencode_obj_int(clone, *o->integer);
-    return;
-  }
-  if(o->str) {
-    bencode_obj_str(clone, o->str->data, o->str->sz);
-    return;
-  }
+  *clone = c;
 }
 
 void bencode_obj_list_append(bencode_obj_t l, bencode_obj_t v)
@@ -230,7 +227,7 @@ typedef struct {
 
 void _bencode_write(bencode_obj_t o, bencode_obj_write_ctx_t * ctx);
 
-static ssize_t _bencode_write_string(bencode_obj_write_ctx_t * ctx, uint8_t * k, size_t sz)
+ssize_t _bencode_write_string(bencode_obj_write_ctx_t * ctx, uint8_t * k, size_t sz)
 {
   ssize_t res = 0;
   res = fprintf(ctx->f, "%ld", sz);
@@ -243,7 +240,8 @@ static ssize_t _bencode_write_string(bencode_obj_write_ctx_t * ctx, uint8_t * k,
     res += sizeof(char);
   }
   if(sz) {
-    if(fwrite(k, sz, 1, ctx->f) != sz) {
+    if(fwrite(k, sizeof(uint8_t), sz, ctx->f) != sz) {
+      mnet_error(LOG_DATA, "failed to write string of size %ld: %s", sz, strerror(errno));
       return -1;
     }
   }
@@ -252,13 +250,14 @@ static ssize_t _bencode_write_string(bencode_obj_write_ctx_t * ctx, uint8_t * k,
 }
 
 // write a dict key/value
-static void _bencode_dict_write(bencode_obj_t d, const char * k, bencode_obj_t v, void * u)
+void _bencode_dict_write(bencode_obj_t d, const char * k, bencode_obj_t v, void * u)
 {
   ssize_t res = 0;
   bencode_obj_write_ctx_t * ctx = (bencode_obj_write_ctx_t *) u;
   res = _bencode_write_string(ctx, (uint8_t*)k, strlen(k));
   if(res < 0) {
     ctx->written = -1;
+    return;
   } else {
     ctx->written += res;
   }
@@ -267,7 +266,7 @@ static void _bencode_dict_write(bencode_obj_t d, const char * k, bencode_obj_t v
 }
 
 // write a list item
-static void _bencode_list_write(bencode_obj_t l, bencode_obj_t i, void * u)
+void _bencode_list_write(bencode_obj_t l, bencode_obj_t i, void * u)
 {
   bencode_obj_write_ctx_t * ctx = (bencode_obj_write_ctx_t *) u;
   _bencode_write(i, u);
@@ -318,6 +317,7 @@ void _bencode_write(bencode_obj_t o, bencode_obj_write_ctx_t * ctx)
       }
     }
   } else {
+    // it is a string
     res = _bencode_write_string(ctx, str, sz);
     if(res < 0) {
       // error
@@ -363,7 +363,7 @@ typedef struct {
 
 void _bencode_read(bencode_obj_t * o, bencode_obj_read_ctx_t * ctx, char prefix);
 
-static void _bencode_read_str(bencode_obj_t * o, bencode_obj_read_ctx_t * ctx, char prefix)
+void _bencode_read_str(bencode_obj_t * o, bencode_obj_read_ctx_t * ctx, char prefix)
 {
   char numbuf[32] = {0};
   if(prefix) {
@@ -402,7 +402,7 @@ static void _bencode_read_str(bencode_obj_t * o, bencode_obj_read_ctx_t * ctx, c
   ctx->read = -1;
 }
 
-static void _bencode_read_dict_item(bencode_obj_t d, bencode_obj_read_ctx_t * ctx, char prefix)
+void _bencode_read_dict_item(bencode_obj_t d, bencode_obj_read_ctx_t * ctx, char prefix)
 {
   bencode_obj_t k = NULL;
   bencode_obj_t v = NULL;

@@ -1,5 +1,6 @@
 #include <mnet/ri.h>
 #include <mnet/address.h>
+#include <mnet/bencode.h>
 #include <mnet/encoding.h>
 #include <mnet/identity.h>
 #include <mnet/memory.h>
@@ -15,42 +16,87 @@ struct router_info
   uint8_t * data;
   size_t len;
   struct mnet_identity * identity;
-
-  uint64_t timestamp;
-
-  uint8_t num_addresses;
-  struct mnet_addr ** addresses;
+  struct iwp_config * link;
   
-  char * caps;
+  uint8_t * caps;
 };
 
 void router_info_new(struct router_info ** ri)
 {
-  (*ri) = mallocx(sizeof(struct router_info), MALLOCX_ZERO);
+  (*ri) = xmalloc(sizeof(struct router_info));
 }
 
 void router_info_free(struct router_info ** ri)
 {
   mnet_identity_free(&(*ri)->identity);
-  size_t n = (*ri)->num_addresses;
-  while(n--)
-    mnet_addr_free(&(*ri)->addresses[n]);
+  iwp_config_free(&(*ri)->link);
   free((*ri)->data);
   free((*ri)->caps);
   free(*ri);
 }
 
-void router_info_process_props(char * k, char * v, void * u)
+typedef struct {
+  struct router_info * ri;
+  int success;
+} ri_read_ctx;
+
+void router_info_process(bencode_obj_t d, const char * k, bencode_obj_t v, void * u)
 {
-  struct router_info * ri = (struct router_info *) u;
-  
-  if(!strcmp(k, "caps")) ri->caps = strdup(v);
-  
+  ri_read_ctx * ctx = (ri_read_ctx *) u;
+  struct router_info * ri = ctx->ri;
+  if(!strcmp(k, "caps")) {
+    // free existing caps
+    if(ri->caps) {
+      free(ri->caps);
+      ri->caps = NULL;
+    }
+    // read caps
+    ssize_t sz = bencode_obj_getstr(v, &ri->caps);
+    if (sz == -1) {
+      mnet_error(LOG_DATA, "failed to read router info, bad caps");
+    } else {
+      ri->caps[sz] = 0;
+      mnet_debug(LOG_DATA, "read caps from router info: %s", ri->caps);
+    }
+  }
+  else if(!strcmp(k, "iwp")) {
+    // iwp config
+    if(ri->link) iwp_config_free(&ri->link);
+    iwp_config_new(&ri->link);
+    if(!iwp_config_load_dict(ri->link, v)) {
+      // error
+      mnet_error(LOG_DATA, "Failed to parse iwp config");
+      iwp_config_free(&ri->link);
+    }
+  } else if (!strcmp(k, "ident")) {
+    if(ri->identity) mnet_identity_free(&ri->identity);
+    mnet_identity_new(&ri->identity);
+    uint8_t * str = NULL;
+    ssize_t sz = bencode_obj_getstr(v, &str);
+    if(str) {
+      str[sz] = 0;
+      if(!mnet_identity_from_base64(ri->identity, str)) {
+        mnet_error(LOG_DATA, "failed to parse ident");
+      }
+    }
+  }
 }
 
 int router_info_load(struct router_info * ri, FILE * f)
 {
-  return 0;
+  ri_read_ctx ctx = {
+    .ri = ri,
+    .success = 0
+  };
+  bencode_obj_t benc = NULL;
+  if(bencode_read_file(&benc, f) > 0) { 
+    if(bencode_obj_is_dict(benc)) {
+      ctx.success = 1;
+      bencode_obj_iter_dict(benc, router_info_process, &ctx);
+    }
+  }
+  if (benc) bencode_obj_free(&benc);
+  return ctx.success;
 }
 
 int router_info_verify(struct router_info * ri)
@@ -70,16 +116,22 @@ void router_info_generate(struct mnet_identity_keys * k, struct router_info_conf
 
 int router_info_write(struct router_info * ri, FILE * f)
 {
-  if(!ri->len) return 0; // empty
-  return fwrite(ri->data, ri->len, 1, f) != ri->len;
+  int ret = 0;
+  bencode_obj_t benc = NULL;
+  bencode_obj_t k = NULL;
+  char * str = mnet_identity_to_base64(ri->identity);
+  bencode_obj_dict(&benc);
+  bencode_obj_str(&k, str, strlen(str));
+  free(str);
+  bencode_obj_dict_set(benc, "ident", k);
+  bencode_obj_free(&k);
+
+  bencode_obj_free(&benc);
+  return ret;
 }
 
 void router_info_iter_addrs(struct router_info * ri, router_info_addr_iter i, void * u)
 {
-  uint8_t num = ri->num_addresses;
-  uint8_t idx = 0;
-  while(idx < num)
-    i(ri, ri->addresses[idx++], u);
 }
 
 char * router_info_base64_ident(struct router_info * ri)

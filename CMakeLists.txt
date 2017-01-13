@@ -8,6 +8,8 @@ find_package(PkgConfig)
 include(FindPackageHandleStandardArgs)
 include(GNUInstallDirs)
 
+set(CMAKE_C_FLAGS "-g")
+
 pkg_check_modules(UV libuv)
 pkg_check_modules(SODIUM libsodium)
 

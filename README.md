@@ -3,7 +3,7 @@
 
 ## requirements
 
-* libuv 1.8.x
+* libuv >= 1.8.x
 * jemalloc
 * libsodium
 
